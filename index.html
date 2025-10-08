@@ -8,21 +8,22 @@
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
     body { margin: 0; background: #f7f7f8; color: #111827; }
     header { padding: 16px 20px; background: #111827; color: #fff; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
-    .hdr-left { display:flex; align-items:center; gap:12px; }
+    .hdr-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
     .user-badge { background:#0ea5e9; color:#fff; padding:6px 10px; border-radius:999px; font-size:12px; }
     main { padding: 20px; max-width: 960px; margin: 0 auto; }
     .ver { font-size: 12px; color: #d1d5db; }
     .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; }
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    @media (max-width: 720px) { .row, .row-3 { grid-template-columns: 1fr; } }
     label { font-size: 12px; color: #374151; display: block; margin-bottom: 4px; }
     input, select, button { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; background: #fff; font-size: 14px; }
     input[readonly] { background: #f3f4f6; color: #6b7280; }
     button { background: #111827; color: #fff; border: none; cursor: pointer; }
     button.secondary { background: #e5e7eb; color: #111827; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
-    .toolbar { display:flex; gap: 8px; align-items:center; }
-    .muted { color: #6b7280; font-size: 12px; }
+    .toolbar { display:flex; gap: 8px; align-items:center; flex-wrap: wrap; }
+    .toolbar button { width: auto; }
     .statusbar { margin-top: 8px; font-size: 13px; }
     .status-ok { color: #065f46; }
     .status-err { color: #991b1b; }
@@ -41,7 +42,7 @@
       <strong>NWRTW – Contact Update Portal</strong>
       <span class="user-badge" id="userBadge">User: (unknown)</span>
     </div>
-    <span class="ver" id="versionTxt">v0.1.1 • 2025-10-08</span>
+    <span class="ver" id="versionTxt">v0.1.3 • 2025-10-08</span>
   </header>
 
   <main>
@@ -51,16 +52,15 @@
       <div class="row">
         <div>
           <label for="firstName">First Name</label>
-          <input id="firstName" placeholder="e.g., Mary"/>
+          <input id="firstName" placeholder="e.g., 00004321"/>
         </div>
         <div>
           <label for="lastName">Last Name</label>
-          <input id="lastName" placeholder="e.g., Johnson"/>
+          <input id="lastName" placeholder="e.g., PT001"/>
         </div>
       </div>
       <div class="toolbar" style="margin-top:12px;">
         <button id="findBtn">Find</button>
-        <span class="muted" id="whoSpan"></span>
       </div>
       <div id="findMsg" class="statusbar"></div>
       <div id="results" class="results-list"></div>
@@ -69,11 +69,8 @@
     <!-- CONTACT DETAILS -->
     <section class="card" id="contactCard" style="display:none;">
       <h3>Contact</h3>
-      <div class="row-3">
-        <div>
-          <label>GHL Contact ID</label>
-          <input id="ghlId" readonly />
-        </div>
+      <!-- GHL ID is hidden; we keep it in memory only -->
+      <div class="row">
         <div>
           <label>Active</label>
           <input id="activeYn" readonly />
@@ -120,12 +117,12 @@
   </main>
 
   <footer>
-    NWRTW Contact Update • <span id="verFooter">v0.1.1 • 2025-10-08</span>
+    NWRTW Contact Update • <span id="verFooter">v0.1.3 • 2025-10-08</span>
   </footer>
 
   <script>
     // ======== CONFIG ========
-    const VERSION = "v0.1.1 • 2025-10-08";
+    const VERSION = "v0.1.3 • 2025-10-08";
     const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev";
     const STATUS_OPTIONS = [
       "RX Received", "On Hold", "RX Processed", "IE Authorized", "IE Scheduled",
@@ -133,7 +130,6 @@
       "Active Treatment", "Follow Up", "Discharged"
     ];
 
-    // Apply version text (top + footer)
     document.getElementById("versionTxt").textContent = VERSION;
     document.getElementById("verFooter").textContent = VERSION;
 
@@ -143,19 +139,13 @@
       return u.searchParams.get(name);
     }
     const qpUser = getQueryParam("user_name");
-    if (qpUser) {
-      sessionStorage.setItem("nwrtw_user_name", qpUser);
-    }
+    if (qpUser) sessionStorage.setItem("nwrtw_user_name", qpUser);
     const userName = sessionStorage.getItem("nwrtw_user_name") || "";
-    document.getElementById("whoSpan").textContent = userName ? `Acting as: ${userName}` : "Acting as: (unknown)";
     document.getElementById("userBadge").textContent = `User: ${userName || "(unknown)"}`;
 
     // ======== UTIL ========
     const $ = (id) => document.getElementById(id);
-    const setStatus = (el, msg, ok=true) => {
-      el.textContent = msg;
-      el.className = "statusbar " + (ok ? "status-ok" : "status-err");
-    };
+    const setStatus = (el, msg, ok=true) => { el.textContent = msg; el.className = "statusbar " + (ok ? "status-ok" : "status-err"); };
     function formatDateLocal(isoLike) {
       if (!isoLike) return "";
       try {
@@ -183,8 +173,8 @@
 
     // ======== FIND ========
     $("findBtn").addEventListener("click", async () => {
-      const first_name = $("firstName").value.trim();
-      const last_name  = $("lastName").value.trim();
+      const first_name = $("firstName").value.trim();   // kept as First Name in GHL
+      const last_name  = $("lastName").value.trim();    // kept as Last Name in GHL
       $("results").innerHTML = "";
       setStatus($("findMsg"), "Searching…", true);
 
@@ -217,7 +207,7 @@
             div.innerHTML = `
               <div>
                 <div><strong>${item.first_name || ""} ${item.last_name || ""}</strong></div>
-                <div class="muted">ID: ${item.ghl_contact_id}</div>
+                <div class="muted">Program: ${item.program || ""}</div>
               </div>
               <div>
                 <span class="pill">${item.status || "—"}</span>
@@ -252,13 +242,12 @@
     function renderContact(contact) {
       currentContact = contact;
       $("contactCard").style.display = "";
-      $("ghlId").value = contact.ghl_contact_id || "";
       $("activeYn").value = contact.active_yn ?? "";
       $("program").value = contact.program || "";
       $("currentStatus").value = contact.status || "";
       uniqueOptions($("statusSelect"), STATUS_OPTIONS, contact.status || "");
       $("saveMsg").textContent = "";
-      $("historyCard").style.display = "none"; // hide until we explicitly render
+      $("historyCard").style.display = "none";
     }
 
     function renderHistory(list) {
@@ -332,3 +321,4 @@
   </script>
 </body>
 </html>
+
