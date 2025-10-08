@@ -5,6 +5,9 @@
   <title>NWRTW – Contact Update Portal</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
+    /* NEW: prevent width overflow that caused overlap */
+    *, *::before, *::after { box-sizing: border-box; }
+
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
     body { margin: 0; background: #f7f7f8; color: #111827; }
     header { padding: 16px 20px; background: #111827; color: #fff; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
@@ -13,20 +16,38 @@
     main { padding: 20px; max-width: 960px; margin: 0 auto; }
     .ver { font-size: 12px; color: #d1d5db; }
     .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+
+    /* TWEAK: wider gaps so fields don’t visually touch */
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
     @media (max-width: 720px) { .row, .row-3 { grid-template-columns: 1fr; } }
-    label { font-size: 12px; color: #374151; display: block; margin-bottom: 4px; }
-    input, select, button { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; background: #fff; font-size: 14px; }
+
+    label { font-size: 12px; color: #374151; display: block; margin-bottom: 6px; }
+
+    /* Ensure inputs stay inside their cell and don’t overlap neighbors */
+    input, select, button {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      font-size: 14px;
+    }
     input[readonly] { background: #f3f4f6; color: #6b7280; }
+
     button { background: #111827; color: #fff; border: none; cursor: pointer; }
     button.secondary { background: #e5e7eb; color: #111827; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
+
     .toolbar { display:flex; gap: 8px; align-items:center; flex-wrap: wrap; }
     .toolbar button { width: auto; }
+
     .statusbar { margin-top: 8px; font-size: 13px; }
     .status-ok { color: #065f46; }
     .status-err { color: #991b1b; }
+
     table { width: 100%; border-collapse: collapse; }
     th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
     th { font-size: 12px; letter-spacing: .02em; color: #374151; text-transform: uppercase; }
@@ -42,7 +63,7 @@
       <strong>NWRTW – Contact Update Portal</strong>
       <span class="user-badge" id="userBadge">User: (unknown)</span>
     </div>
-    <span class="ver" id="versionTxt">v0.1.3 • 2025-10-08</span>
+    <span class="ver" id="versionTxt">v0.1.4 • 2025-10-08</span>
   </header>
 
   <main>
@@ -69,7 +90,6 @@
     <!-- CONTACT DETAILS -->
     <section class="card" id="contactCard" style="display:none;">
       <h3>Contact</h3>
-      <!-- GHL ID is hidden; we keep it in memory only -->
       <div class="row">
         <div>
           <label>Active</label>
@@ -117,12 +137,12 @@
   </main>
 
   <footer>
-    NWRTW Contact Update • <span id="verFooter">v0.1.3 • 2025-10-08</span>
+    NWRTW Contact Update • <span id="verFooter">v0.1.4 • 2025-10-08</span>
   </footer>
 
   <script>
     // ======== CONFIG ========
-    const VERSION = "v0.1.3 • 2025-10-08";
+    const VERSION = "v0.1.4 • 2025-10-08";
     const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev";
     const STATUS_OPTIONS = [
       "RX Received", "On Hold", "RX Processed", "IE Authorized", "IE Scheduled",
@@ -173,8 +193,8 @@
 
     // ======== FIND ========
     $("findBtn").addEventListener("click", async () => {
-      const first_name = $("firstName").value.trim();   // kept as First Name in GHL
-      const last_name  = $("lastName").value.trim();    // kept as Last Name in GHL
+      const first_name = $("firstName").value.trim();
+      const last_name  = $("lastName").value.trim();
       $("results").innerHTML = "";
       setStatus($("findMsg"), "Searching…", true);
 
@@ -284,10 +304,7 @@
       try {
         const r = await fetch(`${API_BASE}/save`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-acting-user": userName
-          },
+          headers: { "Content-Type": "application/json", "x-acting-user": userName },
           body: JSON.stringify(payload)
         });
         const data = await r.json();
