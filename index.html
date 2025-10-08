@@ -1,0 +1,329 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>NWRTW – Contact Update Portal</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { margin: 0; background: #f7f7f8; color: #111827; }
+    header { padding: 16px 20px; background: #111827; color: #fff; display:flex; justify-content:space-between; align-items:center; }
+    main { padding: 20px; max-width: 960px; margin: 0 auto; }
+    .ver { font-size: 12px; color: #d1d5db; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+    label { font-size: 12px; color: #374151; display: block; margin-bottom: 4px; }
+    input, select, button { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid #d1d5db; background: #fff; font-size: 14px; }
+    input[readonly] { background: #f3f4f6; color: #6b7280; }
+    button { background: #111827; color: #fff; border: none; cursor: pointer; }
+    button.secondary { background: #e5e7eb; color: #111827; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .toolbar { display:flex; gap: 8px; align-items:center; }
+    .muted { color: #6b7280; font-size: 12px; }
+    .statusbar { margin-top: 8px; font-size: 13px; }
+    .status-ok { color: #065f46; }
+    .status-err { color: #991b1b; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+    th { font-size: 12px; letter-spacing: .02em; color: #374151; text-transform: uppercase; }
+    .results-list { margin-top: 8px; }
+    .result-item { padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; background:#fff; }
+    .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#eef2ff; color:#3730a3; font-size:12px; }
+    footer { padding: 12px 20px; text-align:center; color:#6b7280; font-size:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <strong>NWRTW – Contact Update Portal</strong>
+    <span class="ver" id="versionTxt">v0.1.0 • 2025-10-08</span>
+  </header>
+
+  <main>
+    <!-- FIND -->
+    <section class="card">
+      <h3>Find Contact</h3>
+      <div class="row">
+        <div>
+          <label for="firstName">First Name</label>
+          <input id="firstName" placeholder="e.g., Mary"/>
+        </div>
+        <div>
+          <label for="lastName">Last Name</label>
+          <input id="lastName" placeholder="e.g., Johnson"/>
+        </div>
+      </div>
+      <div class="toolbar" style="margin-top:12px;">
+        <button id="findBtn">Find</button>
+        <span class="muted" id="whoSpan"></span>
+      </div>
+      <div id="findMsg" class="statusbar"></div>
+      <div id="results" class="results-list"></div>
+    </section>
+
+    <!-- CONTACT DETAILS -->
+    <section class="card" id="contactCard" style="display:none;">
+      <h3>Contact</h3>
+      <div class="row-3">
+        <div>
+          <label>GHL Contact ID</label>
+          <input id="ghlId" readonly />
+        </div>
+        <div>
+          <label>Active</label>
+          <input id="activeYn" readonly />
+        </div>
+        <div>
+          <label>Program</label>
+          <input id="program" readonly />
+        </div>
+      </div>
+
+      <div class="row" style="margin-top:12px;">
+        <div>
+          <label>Status</label>
+          <select id="statusSelect"></select>
+        </div>
+        <div>
+          <label>Current Status</label>
+          <input id="currentStatus" readonly />
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-top:12px;">
+        <button id="saveBtn">Save</button>
+        <button class="secondary" id="clearBtn">Clear</button>
+      </div>
+      <div id="saveMsg" class="statusbar"></div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="card" id="historyCard" style="display:none;">
+      <h3>Change History</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>User Name</th>
+            <th>Change Date (LA)</th>
+            <th>Status</th>
+            <th>Program</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    NWRTW Contact Update • <span id="verFooter">v0.1.0 • 2025-10-08</span>
+  </footer>
+
+  <script>
+    // ======== CONFIG ========
+    const VERSION = "v0.1.0 • 2025-10-08";
+    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev";
+    const STATUS_OPTIONS = [
+      "RX Received", "On Hold", "RX Processed", "IE Authorized", "IE Scheduled",
+      "IE Completed", "On Hold Review", "TX Authorized", "TX Scheduled",
+      "Active Treatment", "Follow Up", "Discharged"
+    ];
+
+    // Apply version text (top + footer)
+    document.getElementById("versionTxt").textContent = VERSION;
+    document.getElementById("verFooter").textContent = VERSION;
+
+    // ======== USER NAME HANDOFF ========
+    function getQueryParam(name) {
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name);
+    }
+    const qpUser = getQueryParam("user_name");
+    if (qpUser) {
+      sessionStorage.setItem("nwrtw_user_name", qpUser);
+    }
+    const userName = sessionStorage.getItem("nwrtw_user_name") || "";
+    document.getElementById("whoSpan").textContent = userName ? `Acting as: ${userName}` : "Acting as: (unknown)";
+
+    // ======== UTIL ========
+    const $ = (id) => document.getElementById(id);
+    const setStatus = (el, msg, ok=true) => {
+      el.textContent = msg;
+      el.className = "statusbar " + (ok ? "status-ok" : "status-err");
+    };
+    function formatDateLocal(isoLike) {
+      if (!isoLike) return "";
+      try {
+        const parts = isoLike.split(/[T ]/);
+        if (parts.length >= 2) return parts[0] + " " + parts[1].slice(0,8);
+        return isoLike;
+      } catch { return isoLike; }
+    }
+    function uniqueOptions(select, values, current) {
+      const set = new Set(values);
+      if (current && !set.has(current)) set.add(current);
+      const arr = Array.from(set);
+      select.innerHTML = "";
+      for (const v of arr) {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
+      }
+      if (current) select.value = current;
+    }
+
+    // ======== STATE ========
+    let currentContact = null;
+
+    // ======== FIND ========
+    $("findBtn").addEventListener("click", async () => {
+      const first_name = $("firstName").value.trim();
+      const last_name  = $("lastName").value.trim();
+      $("results").innerHTML = "";
+      setStatus($("findMsg"), "Searching…", true);
+
+      try {
+        const r = await fetch(`${API_BASE}/find`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ first_name, last_name })
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data?.error || "Search failed");
+
+        if (data.count === 0) {
+          setStatus($("findMsg"), "Contact not found.", false);
+          $("contactCard").style.display = "none";
+          $("historyCard").style.display = "none";
+          return;
+        }
+
+        setStatus($("findMsg"), `Found ${data.count} contact(s).`, true);
+
+        if (data.count === 1) {
+          renderContact(data.matches[0]);
+          renderHistory(data.history || []);
+        } else {
+          const container = $("results");
+          data.matches.forEach(item => {
+            const div = document.createElement("div");
+            div.className = "result-item";
+            div.innerHTML = `
+              <div>
+                <div><strong>${item.first_name || ""} ${item.last_name || ""}</strong></div>
+                <div class="muted">ID: ${item.ghl_contact_id}</div>
+              </div>
+              <div>
+                <span class="pill">${item.status || "—"}</span>
+              </div>
+            `;
+            div.addEventListener("click", () => loadContact(item.ghl_contact_id));
+            container.appendChild(div);
+          });
+        }
+      } catch (e) {
+        setStatus($("findMsg"), e.message || "Error searching.", false);
+      }
+    });
+
+    async function loadContact(ghl_contact_id) {
+      $("results").innerHTML = "";
+      $("contactCard").style.display = "none";
+      $("historyCard").style.display = "none";
+      setStatus($("findMsg"), "Loading contact…", true);
+      try {
+        const r = await fetch(`${API_BASE}/contact?ghl_contact_id=${encodeURIComponent(ghl_contact_id)}`);
+        const data = await r.json();
+        if (!r.ok) throw new Error(data?.error || "Load failed");
+        renderContact(data.contact);
+        renderHistory(data.history || []);
+        setStatus($("findMsg"), "Loaded.", true);
+      } catch (e) {
+        setStatus($("findMsg"), e.message || "Error loading contact.", false);
+      }
+    }
+
+    function renderContact(contact) {
+      currentContact = contact;
+      $("contactCard").style.display = "";
+      $("ghlId").value = contact.ghl_contact_id || "";
+      $("activeYn").value = contact.active_yn ?? "";
+      $("program").value = contact.program || "";
+      $("currentStatus").value = contact.status || "";
+      uniqueOptions($("statusSelect"), STATUS_OPTIONS, contact.status || "");
+      $("saveMsg").textContent = "";
+      $("historyCard").style.display = "none"; // hide until we explicitly render
+    }
+
+    function renderHistory(list) {
+      $("historyCard").style.display = "";
+      const tbody = $("historyBody");
+      tbody.innerHTML = "";
+      list.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.user_name || ""}</td>
+          <td>${formatDateLocal(row.change_date)}</td>
+          <td>${row.status || ""}</td>
+          <td>${row.program || ""}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // ======== SAVE ========
+    $("saveBtn").addEventListener("click", async () => {
+      if (!currentContact) return;
+      if (!userName) {
+        setStatus($("saveMsg"), "Missing user_name. Open this page from the GHL menu link that includes ?user_name=…", false);
+        return;
+      }
+
+      const payload = {
+        ghl_contact_id: currentContact.ghl_contact_id,
+        status: $("statusSelect").value,
+        user_name: userName
+      };
+      $("saveBtn").disabled = true;
+      setStatus($("saveMsg"), "Saving…", true);
+      try {
+        const r = await fetch(`${API_BASE}/save`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-acting-user": userName
+          },
+          body: JSON.stringify(payload)
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data?.error || "Save failed");
+
+        if (data.contact_updated) renderContact(data.contact_updated);
+        if (data.history) renderHistory(data.history);
+
+        setStatus($("saveMsg"), "Saved ✓", true);
+      } catch (e) {
+        setStatus($("saveMsg"), e.message || "Error saving.", false);
+      } finally {
+        $("saveBtn").disabled = false;
+      }
+    });
+
+    $("clearBtn").addEventListener("click", () => {
+      currentContact = null;
+      $("firstName").value = "";
+      $("lastName").value = "";
+      $("results").innerHTML = "";
+      $("contactCard").style.display = "none";
+      $("historyCard").style.display = "none";
+      $("findMsg").textContent = "";
+      $("saveMsg").textContent = "";
+    });
+
+    // Optional: auto-load if a contactId is passed in the URL
+    const qpId = getQueryParam("ghl_contact_id");
+    if (qpId) loadContact(qpId);
+  </script>
+</body>
+</html>
+
