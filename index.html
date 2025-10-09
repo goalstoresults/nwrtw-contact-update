@@ -63,7 +63,7 @@
       <strong>NWRTW – Contact Update Portal</strong>
       <span class="user-badge" id="userBadge">User: (unknown)</span>
     </div>
-    <span class="ver" id="versionTxt">v0.1.5</span>
+    <span class="ver" id="versionTxt">v0.1.4 • 2025-10-08</span>
   </header>
 
   <main>
@@ -137,12 +137,12 @@
   </main>
 
   <footer>
-    NWRTW Contact Update • <span id="verFooter">v0.1.5</span>
+    NWRTW Contact Update • <span id="verFooter">v0.1.4 • 2025-10-08</span>
   </footer>
 
   <script>
     // ======== CONFIG ========
-    const VERSION = "v0.1.4 • 2025-10-08";
+    const VERSION = "v0.1.5";
     const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev"; // (unchanged) find & load
     const SAVE_ENDPOINT = "/nwrtw-contact-change"; // <<< NEW: your new save worker endpoint (same origin path)
     const STATUS_OPTIONS = [
@@ -150,7 +150,6 @@
       "IE Completed", "On Hold Review", "TX Authorized", "TX Scheduled",
       "Active Treatment", "Follow Up", "Discharged"
     ];
-  
 
     document.getElementById("versionTxt").textContent = VERSION;
     document.getElementById("verFooter").textContent = VERSION;
@@ -352,4 +351,3 @@
   </script>
 </body>
 </html>
-
