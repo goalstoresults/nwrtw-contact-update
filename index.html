@@ -63,7 +63,7 @@
       <strong>NWRTW – Contact Update Portal</strong>
       <span class="user-badge" id="userBadge">User: (unknown)</span>
     </div>
-    <span class="ver" id="versionTxt">v0.1.4 • 2025-10-08</span>
+    <span class="ver" id="versionTxt">v0.1.7 • 2025-10-09</span>
   </header>
 
   <main>
@@ -137,14 +137,14 @@
   </main>
 
   <footer>
-    NWRTW Contact Update • <span id="verFooter">v0.1.4 • 2025-10-08</span>
+    NWRTW Contact Update • <span id="verFooter">v0.1.7 • 2025-10-09</span>
   </footer>
 
   <script>
     // ======== CONFIG ========
-    const VERSION = "v0.1.6.5";
-    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev"; // (unchanged) find & load
-    const SAVE_ENDPOINT = "https://nwrtw-contact-change.dennis-e64.workers.dev"; // <<< NEW: your new save worker endpoint (same origin path)
+    const VERSION = "v0.1.7 • 2025-10-09";
+    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev"; // find & load
+    const SAVE_ENDPOINT = "https://nwrtw-contact-change.dennis-e64.workers.dev"; // NEW worker (with CORS + username handling)
     const STATUS_OPTIONS = [
       "RX Received", "On Hold", "RX Processed", "IE Authorized", "IE Scheduled",
       "IE Completed", "On Hold Review", "TX Authorized", "TX Scheduled",
@@ -159,9 +159,24 @@
       const u = new URL(window.location.href);
       return u.searchParams.get(name);
     }
-    const qpUser = getQueryParam("user_name"); // (unchanged) you pass ?user_name=
+    // Store user_name from URL into sessionStorage if present
+    const qpUser = getQueryParam("user_name");
     if (qpUser) sessionStorage.setItem("nwrtw_user_name", qpUser);
-    const userName = sessionStorage.getItem("nwrtw_user_name") || "";
+
+    // Robust getter: sessionStorage first, then URL fallback (and re-store)
+    function getUserNameOrDie() {
+      let u = sessionStorage.getItem("nwrtw_user_name");
+      if (!u) {
+        const qp = getQueryParam("user_name");
+        if (qp) {
+          sessionStorage.setItem("nwrtw_user_name", qp);
+          u = qp;
+        }
+      }
+      return (u || "").trim();
+    }
+
+    const userName = getUserNameOrDie();
     document.getElementById("userBadge").textContent = `User: ${userName || "(unknown)"}`;
 
     // ======== UTIL ========
@@ -192,7 +207,7 @@
     // ======== STATE ========
     let currentContact = null;
 
-    // ======== FIND ======== (UNCHANGED)
+    // ======== FIND ========
     $("findBtn").addEventListener("click", async () => {
       const first_name = $("firstName").value.trim();
       const last_name  = $("lastName").value.trim();
@@ -287,48 +302,50 @@
       });
     }
 
-    // ======== SAVE ======== (ONLY SECTION CHANGED)
+    // ======== SAVE (belt & suspenders: body + header + query) ========
     $("saveBtn").addEventListener("click", async () => {
       if (!currentContact) return;
-      if (!userName) {
-        setStatus($("saveMsg"), "Missing user_name. Open this page from the GHL menu link that includes ?user_name=…", false);
+
+      const actingUser = getUserNameOrDie();
+      if (!actingUser) {
+        setStatus($("saveMsg"), "Missing user_name. Open this page with ?user_name=…", false);
         return;
       }
 
-      // Build payload for the new worker
       const payload = {
-        actor: userName, // maps to nwrtw_contact_change.actor
         ghl_contact_id: currentContact.ghl_contact_id,
         status: $("statusSelect").value,
-        fields: {
-          // send names when available; harmless if null
-          first_name: currentContact.first_name ?? null,
-          last_name:  currentContact.last_name  ?? null
-        },
-        // flip to true if you want extra data returned for debugging
-        debug: false
+        user_name: actingUser
       };
+
+      const saveUrl = `${SAVE_ENDPOINT}?user_name=${encodeURIComponent(actingUser)}`;
 
       $("saveBtn").disabled = true;
       setStatus($("saveMsg"), "Saving…", true);
+
       try {
-        // Call the NEW worker (same origin path). No changes to the find worker.
-        const r = await fetch(SAVE_ENDPOINT, {
+        const r = await fetch(saveUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            "x-acting-user": actingUser
+          },
           body: JSON.stringify(payload)
         });
 
         const txt = await r.text();
         let data; try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
-        if (!r.ok || !data?.ok) throw new Error(data?.error || "Save failed");
 
-        // After save, refresh the contact & history from the existing API
+        if (!r.ok || data?.ok === false) {
+          const msg = data?.error || `HTTP ${r.status}: ${data?.raw || "Save failed"}`;
+          setStatus($("saveMsg"), msg, false);
+          return;
+        }
+
         await loadContact(currentContact.ghl_contact_id);
-
         setStatus($("saveMsg"), "Saved ✓", true);
       } catch (e) {
-        setStatus($("saveMsg"), e.message || "Error saving.", false);
+        setStatus($("saveMsg"), String(e?.message || e) || "Error saving.", false);
       } finally {
         $("saveBtn").disabled = false;
       }
