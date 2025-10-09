@@ -63,7 +63,7 @@
       <strong>NWRTW – Contact Update Portal</strong>
       <span class="user-badge" id="userBadge">User: (unknown)</span>
     </div>
-    <span class="ver" id="versionTxt">v0.1.4 • 2025-10-08</span>
+    <span class="ver" id="versionTxt">v0.1.5</span>
   </header>
 
   <main>
@@ -137,13 +137,14 @@
   </main>
 
   <footer>
-    NWRTW Contact Update • <span id="verFooter">v0.1.4 • 2025-10-08</span>
+    NWRTW Contact Update • <span id="verFooter">v0.1.5</span>
   </footer>
 
   <script>
     // ======== CONFIG ========
     const VERSION = "v0.1.4 • 2025-10-08";
-    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev";
+    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev"; // (unchanged) find & load
+    const SAVE_ENDPOINT = "/nwrtw-contact-change"; // <<< NEW: your new save worker endpoint (same origin path)
     const STATUS_OPTIONS = [
       "RX Received", "On Hold", "RX Processed", "IE Authorized", "IE Scheduled",
       "IE Completed", "On Hold Review", "TX Authorized", "TX Scheduled",
@@ -158,7 +159,7 @@
       const u = new URL(window.location.href);
       return u.searchParams.get(name);
     }
-    const qpUser = getQueryParam("user_name");
+    const qpUser = getQueryParam("user_name"); // (unchanged) you pass ?user_name=
     if (qpUser) sessionStorage.setItem("nwrtw_user_name", qpUser);
     const userName = sessionStorage.getItem("nwrtw_user_name") || "";
     document.getElementById("userBadge").textContent = `User: ${userName || "(unknown)"}`;
@@ -191,7 +192,7 @@
     // ======== STATE ========
     let currentContact = null;
 
-    // ======== FIND ========
+    // ======== FIND ======== (UNCHANGED)
     $("findBtn").addEventListener("click", async () => {
       const first_name = $("firstName").value.trim();
       const last_name  = $("lastName").value.trim();
@@ -286,7 +287,7 @@
       });
     }
 
-    // ======== SAVE ========
+    // ======== SAVE ======== (ONLY SECTION CHANGED)
     $("saveBtn").addEventListener("click", async () => {
       if (!currentContact) return;
       if (!userName) {
@@ -294,24 +295,36 @@
         return;
       }
 
+      // Build payload for the new worker
       const payload = {
+        actor: userName, // maps to nwrtw_contact_change.actor
         ghl_contact_id: currentContact.ghl_contact_id,
         status: $("statusSelect").value,
-        user_name: userName
+        fields: {
+          // send names when available; harmless if null
+          first_name: currentContact.first_name ?? null,
+          last_name:  currentContact.last_name  ?? null
+        },
+        // flip to true if you want extra data returned for debugging
+        debug: false
       };
+
       $("saveBtn").disabled = true;
       setStatus($("saveMsg"), "Saving…", true);
       try {
-        const r = await fetch(`${API_BASE}/save`, {
+        // Call the NEW worker (same origin path). No changes to the find worker.
+        const r = await fetch(SAVE_ENDPOINT, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-acting-user": userName },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload)
         });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data?.error || "Save failed");
 
-        if (data.contact_updated) renderContact(data.contact_updated);
-        if (data.history) renderHistory(data.history);
+        const txt = await r.text();
+        let data; try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
+        if (!r.ok || !data?.ok) throw new Error(data?.error || "Save failed");
+
+        // After save, refresh the contact & history from the existing API
+        await loadContact(currentContact.ghl_contact_id);
 
         setStatus($("saveMsg"), "Saved ✓", true);
       } catch (e) {
@@ -338,3 +351,4 @@
   </script>
 </body>
 </html>
+
