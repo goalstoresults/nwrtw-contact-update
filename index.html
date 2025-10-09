@@ -2,362 +2,339 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>NWRTW Contact Portal — Change & Save • v1.0.6 (log-only)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>NWRTW – Contact Update Portal</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
-    :root {
-      --bg:#f7fafc; --card:#ffffff; --text:#111827; --muted:#6b7280; --border:#e5e7eb;
-      --accent:#2563eb; --accent-2:#059669; --danger:#dc2626;
+    /* NEW: prevent width overflow that caused overlap */
+    *, *::before, *::after { box-sizing: border-box; }
+
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
+    body { margin: 0; background: #f7f7f8; color: #111827; }
+    header { padding: 16px 20px; background: #111827; color: #fff; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
+    .hdr-left { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+    .user-badge { background:#0ea5e9; color:#fff; padding:6px 10px; border-radius:999px; font-size:12px; }
+    main { padding: 20px; max-width: 960px; margin: 0 auto; }
+    .ver { font-size: 12px; color: #d1d5db; }
+    .card { background: #fff; border-radius: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); padding: 16px; margin-bottom: 16px; }
+
+    /* TWEAK: wider gaps so fields don’t visually touch */
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+
+    @media (max-width: 720px) { .row, .row-3 { grid-template-columns: 1fr; } }
+
+    label { font-size: 12px; color: #374151; display: block; margin-bottom: 6px; }
+
+    /* Ensure inputs stay inside their cell and don’t overlap neighbors */
+    input, select, button {
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      font-size: 14px;
     }
-    * { box-sizing: border-box; }
-    body { margin:0; background:var(--bg); color:var(--text); font:14px/1.5 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,sans-serif; }
-    header { padding:16px 20px; border-bottom:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; gap:12px; background:#fff; position:sticky; top:0; z-index:10; }
-    .brand { font-weight:700; letter-spacing:.2px; }
-    .meta { font-size:12px; color:var(--muted); }
-    main { max-width:980px; margin:24px auto 64px; padding:0 16px; }
-    .card { background:var(--card); border:1px solid var(--border); border-radius:14px; box-shadow:0 1px 2px rgba(0,0,0,.04); padding:18px; }
-    .h { font-weight:700; margin:0 0 12px; }
-    .row { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    .row-1 { display:grid; grid-template-columns: 1fr; gap:12px; }
-    label { font-size:12px; color:var(--muted); display:block; margin:0 0 6px; }
-    input[type="text"], select, input[type="search"] {
-      width:100%; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:#fff; color:var(--text);
-      outline:none; transition:border .12s ease, box-shadow .12s ease;
-    }
-    input:focus, select:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-    .actions { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
-    button {
-      appearance:none; border:1px solid var(--accent); background:var(--accent); color:#fff; border-radius:10px;
-      padding:10px 14px; font-weight:600; cursor:pointer; transition:filter .12s ease, transform .02s ease;
-    }
-    button.secondary { background:#fff; color:var(--accent); }
-    button:disabled { opacity:.6; cursor:not-allowed; }
-    .stat { font-size:12px; color:var(--muted); }
-    .pill { display:inline-flex; align-items:center; gap:8px; background:#f1f5f9; border:1px solid var(--border); padding:6px 8px; border-radius:999px; }
-    .ok { color:var(--accent-2); }
-    .err { color:var(--danger); }
-    pre#debugOut { display:none; background:#0b1020; color:#e5e7eb; padding:12px; border-radius:12px; max-height:320px; overflow:auto; border:1px solid #0f172a; }
-    .grid-gap { height:16px; }
-    @media (max-width: 760px) {
-      .row { grid-template-columns: 1fr; }
-    }
+    input[readonly] { background: #f3f4f6; color: #6b7280; }
+
+    button { background: #111827; color: #fff; border: none; cursor: pointer; }
+    button.secondary { background: #e5e7eb; color: #111827; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .toolbar { display:flex; gap: 8px; align-items:center; flex-wrap: wrap; }
+    .toolbar button { width: auto; }
+
+    .statusbar { margin-top: 8px; font-size: 13px; }
+    .status-ok { color: #065f46; }
+    .status-err { color: #991b1b; }
+
+    table { width: 100%; border-collapse: collapse; }
+    th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e7eb; font-size: 14px; }
+    th { font-size: 12px; letter-spacing: .02em; color: #374151; text-transform: uppercase; }
+    .results-list { margin-top: 8px; }
+    .result-item { padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 10px; display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; background:#fff; }
+    .pill { display:inline-block; padding: 2px 8px; border-radius: 999px; background:#eef2ff; color:#3730a3; font-size:12px; }
+    footer { padding: 12px 20px; text-align:center; color:#6b7280; font-size:12px; }
   </style>
 </head>
 <body>
   <header>
-    <div>
-      <div class="brand">NWRTW Contact Portal</div>
-      <div class="meta">Change & Save • v1.0.6 (log-only)</div>
+    <div class="hdr-left">
+      <strong>NWRTW – Contact Update Portal</strong>
+      <span class="user-badge" id="userBadge">User: (unknown)</span>
     </div>
-    <div class="meta">
-      <span class="pill">User: <strong id="userName">Unknown</strong></span>
-    </div>
+    <span class="ver" id="versionTxt">v0.1.4 • 2025-10-08</span>
   </header>
 
   <main>
-    <!-- SEARCH -->
-    <section class="card" id="searchCard">
-      <h3 class="h">Search Contact</h3>
+    <!-- FIND -->
+    <section class="card">
+      <h3>Find Contact</h3>
       <div class="row">
         <div>
-          <label for="search_first">First Name</label>
-          <input id="search_first" type="search" placeholder="e.g., 0004444" />
+          <label for="firstName">First Name</label>
+          <input id="firstName" placeholder="e.g., 00004321"/>
         </div>
         <div>
-          <label for="search_last">Last Name</label>
-          <input id="search_last" type="search" placeholder="e.g., MT001" />
+          <label for="lastName">Last Name</label>
+          <input id="lastName" placeholder="e.g., PT001"/>
         </div>
       </div>
-      <div class="grid-gap"></div>
-      <div class="actions">
+      <div class="toolbar" style="margin-top:12px;">
         <button id="findBtn">Find</button>
-        <span id="findStat" class="stat"></span>
       </div>
+      <div id="findMsg" class="statusbar"></div>
+      <div id="results" class="results-list"></div>
     </section>
 
-    <div class="grid-gap"></div>
+    <!-- CONTACT DETAILS -->
+    <section class="card" id="contactCard" style="display:none;">
+      <h3>Contact</h3>
+      <div class="row">
+        <div>
+          <label>Active</label>
+          <input id="activeYn" readonly />
+        </div>
+        <div>
+          <label>Program</label>
+          <input id="program" readonly />
+        </div>
+      </div>
 
-    <!-- DETAILS (hidden until a contact is loaded) -->
-    <section class="card" id="detailsCard" style="display:none;">
-      <h3 class="h">Contact Details</h3>
-      <div class="row">
+      <div class="row" style="margin-top:12px;">
         <div>
-          <label for="first_name">First Name</label>
-          <input id="first_name" type="text" placeholder="e.g., 0004444" />
+          <label>Status</label>
+          <select id="statusSelect"></select>
         </div>
         <div>
-          <label for="last_name">Last Name</label>
-          <input id="last_name" type="text" placeholder="e.g., MT001" />
+          <label>Current Status</label>
+          <input id="currentStatus" readonly />
         </div>
       </div>
-      <div class="grid-gap"></div>
-      <div class="row">
-        <div>
-          <label for="status">Status (GHL custom field)</label>
-          <input id="status" type="text" placeholder="e.g., IE Authorized" />
-        </div>
-        <div>
-          <label for="ghl_id">GHL Contact ID</label>
-          <input id="ghl_id" type="text" placeholder="Loaded from search…" disabled />
-        </div>
+
+      <div class="toolbar" style="margin-top:12px;">
+        <button id="saveBtn">Save</button>
+        <button class="secondary" id="clearBtn">Clear</button>
       </div>
-      <div class="grid-gap"></div>
-      <div class="actions">
-        <button id="saveBtn" disabled>Save (log-only)</button>
-        <button id="resetBtn" class="secondary">Reset</button>
-        <label class="pill" style="cursor:pointer;">
-          <input type="checkbox" id="debugToggle" /> Debug
-        </label>
-        <span id="saveStat" class="stat"></span>
-      </div>
-      <div class="grid-gap"></div>
-      <pre id="debugOut"></pre>
+      <div id="saveMsg" class="statusbar"></div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="card" id="historyCard" style="display:none;">
+      <h3>Change History</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>User Name</th>
+            <th>Change Date (LA)</th>
+            <th>Status</th>
+            <th>Program</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody"></tbody>
+      </table>
     </section>
   </main>
 
-  <script type="module">
-    /* =======================
-       USER from URL (required for Save only)
-    ======================= */
-    const USER_PARAM_KEYS = ['user','u','name'];
-    function getUserFromUrl() {
-      const p = new URLSearchParams(location.search);
-      for (const k of USER_PARAM_KEYS) {
-        const v = p.get(k);
-        if (v && v.trim()) return v.trim();
+  <footer>
+    NWRTW Contact Update • <span id="verFooter">v0.1.4 • 2025-10-08</span>
+  </footer>
+
+  <script>
+    // ======== CONFIG ========
+    const VERSION = "v0.1.4 • 2025-10-08";
+    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev";
+    const STATUS_OPTIONS = [
+      "RX Received", "On Hold", "RX Processed", "IE Authorized", "IE Scheduled",
+      "IE Completed", "On Hold Review", "TX Authorized", "TX Scheduled",
+      "Active Treatment", "Follow Up", "Discharged"
+    ];
+
+    document.getElementById("versionTxt").textContent = VERSION;
+    document.getElementById("verFooter").textContent = VERSION;
+
+    // ======== USER NAME HANDOFF ========
+    function getQueryParam(name) {
+      const u = new URL(window.location.href);
+      return u.searchParams.get(name);
+    }
+    const qpUser = getQueryParam("user_name");
+    if (qpUser) sessionStorage.setItem("nwrtw_user_name", qpUser);
+    const userName = sessionStorage.getItem("nwrtw_user_name") || "";
+    document.getElementById("userBadge").textContent = `User: ${userName || "(unknown)"}`;
+
+    // ======== UTIL ========
+    const $ = (id) => document.getElementById(id);
+    const setStatus = (el, msg, ok=true) => { el.textContent = msg; el.className = "statusbar " + (ok ? "status-ok" : "status-err"); };
+    function formatDateLocal(isoLike) {
+      if (!isoLike) return "";
+      try {
+        const parts = isoLike.split(/[T ]/);
+        if (parts.length >= 2) return parts[0] + " " + parts[1].slice(0,8);
+        return isoLike;
+      } catch { return isoLike; }
+    }
+    function uniqueOptions(select, values, current) {
+      const set = new Set(values);
+      if (current && !set.has(current)) set.add(current);
+      const arr = Array.from(set);
+      select.innerHTML = "";
+      for (const v of arr) {
+        const opt = document.createElement("option");
+        opt.value = v;
+        opt.textContent = v;
+        select.appendChild(opt);
       }
-      return null;
+      if (current) select.value = current;
     }
-    const USER = getUserFromUrl();
-    document.querySelector('#userName').textContent = USER || 'Missing user';
 
-    /* =======================
-       CONFIG
-    ======================= */
-    const ENDPOINT_FIND = '/nwrtw-find-contact';     // existing find worker
-    const ENDPOINT_SAVE = '/nwrtw-contact-change';   // new save worker (v1.0)
+    // ======== STATE ========
+    let currentContact = null;
 
-    /* =======================
-       STATE
-    ======================= */
-    const state = { ghl_contact_id: null, loadedContact: null };
+    // ======== FIND ========
+    $("findBtn").addEventListener("click", async () => {
+      const first_name = $("firstName").value.trim();
+      const last_name  = $("lastName").value.trim();
+      $("results").innerHTML = "";
+      setStatus($("findMsg"), "Searching…", true);
 
-    /* =======================
-       DOM
-    ======================= */
-    const $ = (sel) => document.querySelector(sel);
-    const findBtn   = $('#findBtn');
-    const findStat  = $('#findStat');
-    const saveBtn   = $('#saveBtn');
-    const saveStat  = $('#saveStat');
-    const resetBtn  = $('#resetBtn');
-    const dbgToggle = $('#debugToggle');
-    const dbgOut    = $('#debugOut');
-    const detailsCard = $('#detailsCard');
+      try {
+        const r = await fetch(`${API_BASE}/find`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ first_name, last_name })
+        });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data?.error || "Search failed");
 
-    const inpSearchFirst = $('#search_first');
-    const inpSearchLast  = $('#search_last');
+        if (data.count === 0) {
+          setStatus($("findMsg"), "Contact not found.", false);
+          $("contactCard").style.display = "none";
+          $("historyCard").style.display = "none";
+          return;
+        }
 
-    const inpFirst = $('#first_name');
-    const inpLast  = $('#last_name');
-    const inpStat  = $('#status');
-    const inpGhlId = $('#ghl_id');
+        setStatus($("findMsg"), `Found ${data.count} contact(s).`, true);
 
-    // start hidden/disabled
-    detailsCard.style.display = 'none';
-    saveBtn.disabled = true;
-
-    /* =======================
-       HELPERS
-    ======================= */
-    function setStatus(el, msg, isErr = false) {
-      if (!el) return;
-      el.textContent = msg || '';
-      el.classList.toggle('err', !!isErr);
-      el.classList.toggle('ok', !isErr && !!msg);
-      if (msg && !isErr) setTimeout(() => { el.textContent = ''; el.classList.remove('ok','err'); }, 2500);
-    }
-    function showDebug(obj) {
-      if (!dbgToggle?.checked) {
-        dbgOut.style.display = 'none';
-        dbgOut.textContent = '';
-        return;
+        if (data.count === 1) {
+          renderContact(data.matches[0]);
+          renderHistory(data.history || []);
+        } else {
+          const container = $("results");
+          data.matches.forEach(item => {
+            const div = document.createElement("div");
+            div.className = "result-item";
+            div.innerHTML = `
+              <div>
+                <div><strong>${item.first_name || ""} ${item.last_name || ""}</strong></div>
+                <div class="muted">Program: ${item.program || ""}</div>
+              </div>
+              <div>
+                <span class="pill">${item.status || "—"}</span>
+              </div>
+            `;
+            div.addEventListener("click", () => loadContact(item.ghl_contact_id));
+            container.appendChild(div);
+          });
+        }
+      } catch (e) {
+        setStatus($("findMsg"), e.message || "Error searching.", false);
       }
-      dbgOut.style.display = 'block';
-      dbgOut.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
-    }
-    function fillContact(contact) {
-      state.loadedContact = contact || null;
-      state.ghl_contact_id = contact?.ghl_contact_id || null;
-
-      if (state.ghl_contact_id) {
-        detailsCard.style.display = 'block';
-        saveBtn.disabled = false;
-      } else {
-        detailsCard.style.display = 'none';
-        saveBtn.disabled = true;
-      }
-
-      inpGhlId.value = state.ghl_contact_id || '';
-      inpFirst.value = contact?.first_name ?? '';
-      inpLast.value  = contact?.last_name ?? '';
-      inpStat.value  = contact?.status ?? '';
-    }
-    function resetForm() {
-      fillContact(null);
-      inpSearchFirst.value = '';
-      inpSearchLast.value  = '';
-      showDebug('');
-    }
-
-    // Expose for existing code (no-op if unused)
-    window.nwrtwSetLoadedContact = function(contact) { fillContact(contact); };
-
-/* =======================
-   FIND CONTACT — compatible with old worker
-   - Sends BOTH {first_name,last_name} and {first,last}
-   - Accepts common response shapes
-   - Shows raw server reply when shape mismatches
-======================= */
-async function doFind() {
-  const first = (inpSearchFirst.value || '').trim();
-  const last  = (inpSearchLast.value  || '').trim();
-
-  if (!first || !last) {
-    setStatus(findStat, 'Enter both First and Last.', true);
-    fillContact(null);
-    return;
-  }
-
-  setStatus(findStat, 'Searching…');
-  findBtn.disabled = true;
-
-  // helper: safely parse JSON or return raw text
-  const readSafe = async (res) => {
-    const txt = await res.text();
-    try { return { body: JSON.parse(txt), raw: null, status: res.status, ok: res.ok }; }
-    catch { return { body: null, raw: txt, status: res.status, ok: res.ok }; }
-  };
-
-  try {
-    // Send BOTH key styles to satisfy older/newer workers
-    const res = await fetch(ENDPOINT_FIND, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        first_name: first,
-        last_name:  last,
-        first,
-        last
-      })
     });
 
-    const out = await readSafe(res);
-    if (dbgToggle?.checked) showDebug(out.body ?? { status: out.status, raw: out.raw });
-
-    // Accept any of these shapes:
-    // { ok:true, contact:{...} }
-    // { contact:{...} }
-    // { data:{ contact:{...} } }
-    // { data:[ {...} ] }
-    // [ {...} ]
-    let contact = null;
-    const b = out.body;
-
-    if (b?.contact) contact = b.contact;
-    else if (b?.data?.contact) contact = b.data.contact;
-    else if (Array.isArray(b?.data) && b.data.length) contact = b.data[0];
-    else if (Array.isArray(b) && b.length) contact = b[0];
-
-    if (!out.ok || !contact) {
-      const msg = (b && (b.error || b.message)) || (out.raw ? `Server: ${out.raw}` : 'Contact not found');
-      setStatus(findStat, msg, true);
-      fillContact(null);
-      return;
+    async function loadContact(ghl_contact_id) {
+      $("results").innerHTML = "";
+      $("contactCard").style.display = "none";
+      $("historyCard").style.display = "none";
+      setStatus($("findMsg"), "Loading contact…", true);
+      try {
+        const r = await fetch(`${API_BASE}/contact?ghl_contact_id=${encodeURIComponent(ghl_contact_id)}`);
+        const data = await r.json();
+        if (!r.ok) throw new Error(data?.error || "Load failed");
+        renderContact(data.contact);
+        renderHistory(data.history || []);
+        setStatus($("findMsg"), "Loaded.", true);
+      } catch (e) {
+        setStatus($("findMsg"), e.message || "Error loading contact.", false);
+      }
     }
 
-    // Normalize expected fields if worker names differ
-    contact = {
-      ghl_contact_id: contact.ghl_contact_id ?? contact.ghlId ?? contact.contact_id ?? contact.id ?? null,
-      first_name:     contact.first_name ?? contact.firstName ?? null,
-      last_name:      contact.last_name  ?? contact.lastName  ?? null,
-      status:         contact.status ?? contact.current_status ?? null,
-      ...contact
-    };
+    function renderContact(contact) {
+      currentContact = contact;
+      $("contactCard").style.display = "";
+      $("activeYn").value = contact.active_yn ?? "";
+      $("program").value = contact.program || "";
+      $("currentStatus").value = contact.status || "";
+      uniqueOptions($("statusSelect"), STATUS_OPTIONS, contact.status || "");
+      $("saveMsg").textContent = "";
+      $("historyCard").style.display = "none";
+    }
 
-    fillContact(contact);
-    setStatus(findStat, 'Loaded.');
-  } catch (e) {
-    setStatus(findStat, `Search error: ${String(e?.message || e)}`, true);
-    fillContact(null);
-    if (dbgToggle?.checked) showDebug(String(e?.message || e));
-  } finally {
-    findBtn.disabled = false;
-  }
-}
+    function renderHistory(list) {
+      $("historyCard").style.display = "";
+      const tbody = $("historyBody");
+      tbody.innerHTML = "";
+      list.forEach(row => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${row.user_name || ""}</td>
+          <td>${formatDateLocal(row.change_date)}</td>
+          <td>${row.status || ""}</td>
+          <td>${row.program || ""}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
 
-    /* =======================
-       SAVE (log + upsert only)
-       requires USER in URL
-    ======================= */
-    async function doSave() {
-      if (!USER) {
-        setStatus(saveStat, 'Missing ?user= in URL (or ?u=/ ?name=).', true);
-        return;
-      }
-      if (!state.ghl_contact_id) {
-        setStatus(saveStat, 'No contact loaded.', true);
+    // ======== SAVE ========
+    $("saveBtn").addEventListener("click", async () => {
+      if (!currentContact) return;
+      if (!userName) {
+        setStatus($("saveMsg"), "Missing user_name. Open this page from the GHL menu link that includes ?user_name=…", false);
         return;
       }
 
       const payload = {
-        actor: USER,
-        ghl_contact_id: state.ghl_contact_id,
-        status: (inpStat.value || '').trim() || null,
-        fields: {
-          first_name: (inpFirst.value || '').trim() || null,
-          last_name:  (inpLast.value  || '').trim() || null,
-        },
-        debug: !!(dbgToggle && dbgToggle.checked)
+        ghl_contact_id: currentContact.ghl_contact_id,
+        status: $("statusSelect").value,
+        user_name: userName
       };
-
+      $("saveBtn").disabled = true;
+      setStatus($("saveMsg"), "Saving…", true);
       try {
-        setStatus(saveStat, 'Saving…');
-        saveBtn.disabled = true;
-
-        const res = await fetch(ENDPOINT_SAVE, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        const r = await fetch(`${API_BASE}/save`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-acting-user": userName },
           body: JSON.stringify(payload)
         });
+        const data = await r.json();
+        if (!r.ok) throw new Error(data?.error || "Save failed");
 
-        const txt = await res.text();
-        let json; try { json = JSON.parse(txt); } catch { json = { raw: txt }; }
+        if (data.contact_updated) renderContact(data.contact_updated);
+        if (data.history) renderHistory(data.history);
 
-        if (!res.ok || !json?.ok) {
-          setStatus(saveStat, 'Save error', true);
-          if (dbgToggle?.checked) showDebug(json);
-          return;
-        }
-        setStatus(saveStat, 'Saved.');
-        if (dbgToggle?.checked) showDebug(json);
+        setStatus($("saveMsg"), "Saved ✓", true);
       } catch (e) {
-        setStatus(saveStat, 'Save error', true);
-        if (dbgToggle?.checked) showDebug(String(e?.message || e));
+        setStatus($("saveMsg"), e.message || "Error saving.", false);
       } finally {
-        saveBtn.disabled = !state.ghl_contact_id;
+        $("saveBtn").disabled = false;
       }
-    }
+    });
 
-    /* =======================
-       WIRE UP
-    ======================= */
-    findBtn.addEventListener('click', doFind);
-    saveBtn.addEventListener('click', doSave);
-    resetBtn.addEventListener('click', resetForm);
-    dbgToggle?.addEventListener('change', () =>
-      showDebug(state.loadedContact ? { loaded: state.loadedContact } : '')
-    );
+    $("clearBtn").addEventListener("click", () => {
+      currentContact = null;
+      $("firstName").value = "";
+      $("lastName").value = "";
+      $("results").innerHTML = "";
+      $("contactCard").style.display = "none";
+      $("historyCard").style.display = "none";
+      $("findMsg").textContent = "";
+      $("saveMsg").textContent = "";
+    });
+
+    // Optional: auto-load if a contactId is passed in the URL
+    const qpId = getQueryParam("ghl_contact_id");
+    if (qpId) loadContact(qpId);
   </script>
 </body>
 </html>
