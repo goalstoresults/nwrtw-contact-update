@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>NWRTW Contact Change • v1.0.3</title>
+  <title>NWRTW Contact Portal — Change & Save • v1.0.5 (log-only)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -47,7 +47,7 @@
   <header>
     <div>
       <div class="brand">NWRTW Contact Portal</div>
-      <div class="meta">Change & Save • v1.0.4 (log-only)</div>
+      <div class="meta">Change & Save • v1.0.5 (log-only)</div>
     </div>
     <div class="meta">
       <span class="pill">User: <strong id="userName">Unknown</strong></span>
@@ -61,11 +61,11 @@
       <div class="row">
         <div>
           <label for="search_first">First Name</label>
-          <input id="search_first" type="search" placeholder="e.g., 00004321" />
+          <input id="search_first" type="search" placeholder="e.g., 0004444" />
         </div>
         <div>
           <label for="search_last">Last Name</label>
-          <input id="search_last" type="search" placeholder="e.g., PT001" />
+          <input id="search_last" type="search" placeholder="e.g., MT001" />
         </div>
       </div>
       <div class="grid-gap"></div>
@@ -83,18 +83,18 @@
       <div class="row">
         <div>
           <label for="first_name">First Name</label>
-          <input id="first_name" type="text" placeholder="e.g., 00004321" />
+          <input id="first_name" type="text" placeholder="e.g., 0004444" />
         </div>
         <div>
           <label for="last_name">Last Name</label>
-          <input id="last_name" type="text" placeholder="e.g., PT001" />
+          <input id="last_name" type="text" placeholder="e.g., MT001" />
         </div>
       </div>
       <div class="grid-gap"></div>
       <div class="row">
         <div>
           <label for="status">Status (GHL custom field)</label>
-          <input id="status" type="text" placeholder="e.g., Active" />
+          <input id="status" type="text" placeholder="e.g., IE Authorized" />
         </div>
         <div>
           <label for="ghl_id">GHL Contact ID</label>
@@ -117,9 +117,9 @@
 
   <script type="module">
     /* =======================
-       USER: read once from URL (required)
+       USER from URL (required for Save only)
     ======================= */
-    const USER_PARAM_KEYS = ['user', 'u', 'name'];
+    const USER_PARAM_KEYS = ['user','u','name'];
     function getUserFromUrl() {
       const p = new URLSearchParams(location.search);
       for (const k of USER_PARAM_KEYS) {
@@ -128,37 +128,19 @@
       }
       return null;
     }
-    const USER = getUserFromUrl(); // single source of truth
-
-    function blockUiForMissingUser() {
-      ['#findBtn','#saveBtn','#resetBtn','#search_first','#search_last','#first_name','#last_name','#status']
-        .forEach(sel => { const el = document.querySelector(sel); if (el) el.disabled = true; });
-      const details = document.querySelector('#detailsCard');
-      if (details) details.style.display = 'none';
-      const findStat = document.querySelector('#findStat');
-      if (findStat) {
-        findStat.textContent = 'Missing ?user= (or ?u=/ ?name=) in the URL. Example: ?user=Dennis%20Riley';
-        findStat.classList.add('err');
-      }
-    }
-
-    const userNameEl = document.querySelector('#userName');
-    userNameEl.textContent = USER || 'Missing user';
-    if (!USER) blockUiForMissingUser();
+    const USER = getUserFromUrl();
+    document.querySelector('#userName').textContent = USER || 'Missing user';
 
     /* =======================
        CONFIG
     ======================= */
-    const ENDPOINT_FIND = '/nwrtw-find-contact';     // adjust if mounted elsewhere
-    const ENDPOINT_SAVE = '/nwrtw-contact-change';   // v1.0 log+upsert
+    const ENDPOINT_FIND = '/nwrtw-find-contact';     // existing find worker
+    const ENDPOINT_SAVE = '/nwrtw-contact-change';   // new save worker (v1.0)
 
     /* =======================
        STATE
     ======================= */
-    const state = {
-      ghl_contact_id: null,
-      loadedContact: null,
-    };
+    const state = { ghl_contact_id: null, loadedContact: null };
 
     /* =======================
        DOM
@@ -171,7 +153,6 @@
     const resetBtn  = $('#resetBtn');
     const dbgToggle = $('#debugToggle');
     const dbgOut    = $('#debugOut');
-
     const detailsCard = $('#detailsCard');
 
     const inpSearchFirst = $('#search_first');
@@ -182,10 +163,7 @@
     const inpStat  = $('#status');
     const inpGhlId = $('#ghl_id');
 
-    /* =======================
-       INIT
-    ======================= */
-    // Ensure hidden + disabled on load
+    // start hidden/disabled
     detailsCard.style.display = 'none';
     saveBtn.disabled = true;
 
@@ -197,9 +175,8 @@
       el.textContent = msg || '';
       el.classList.toggle('err', !!isErr);
       el.classList.toggle('ok', !isErr && !!msg);
-      if (msg && !isErr) setTimeout(() => { el.textContent = ''; el.classList.remove('ok','err'); }, 3000);
+      if (msg && !isErr) setTimeout(() => { el.textContent = ''; el.classList.remove('ok','err'); }, 2500);
     }
-
     function showDebug(obj) {
       if (!dbgToggle?.checked) {
         dbgOut.style.display = 'none';
@@ -209,7 +186,6 @@
       dbgOut.style.display = 'block';
       dbgOut.textContent = typeof obj === 'string' ? obj : JSON.stringify(obj, null, 2);
     }
-
     function fillContact(contact) {
       state.loadedContact = contact || null;
       state.ghl_contact_id = contact?.ghl_contact_id || null;
@@ -227,7 +203,6 @@
       inpLast.value  = contact?.last_name ?? '';
       inpStat.value  = contact?.status ?? '';
     }
-
     function resetForm() {
       fillContact(null);
       inpSearchFirst.value = '';
@@ -235,77 +210,79 @@
       showDebug('');
     }
 
+    // Expose for existing code (no-op if unused)
+    window.nwrtwSetLoadedContact = function(contact) { fillContact(contact); };
+
     /* =======================
-   FIND CONTACT (matches existing worker)
-======================= */
-async function doFind() {
-  if (!USER) {
-    blockUiForMissingUser();
-    return;
-  }
+       FIND CONTACT (original-style)
+       POST body: { first_name, last_name }
+       expects: { ok:true, contact:{...} }
+    ======================= */
+    async function doFind() {
+      const first = (inpSearchFirst.value || '').trim();
+      const last  = (inpSearchLast.value  || '').trim();
 
-  const first = (inpSearchFirst.value || '').trim();
-  const last  = (inpSearchLast.value  || '').trim();
+      if (!first || !last) {
+        setStatus(findStat, 'Enter both First and Last.', true);
+        fillContact(null);
+        return;
+      }
 
-  if (!first || !last) {
-    setStatus(findStat, 'Enter both First and Last.', true);
-    fillContact(null);
-    return;
-  }
+      try {
+        setStatus(findStat, 'Searching…');
+        findBtn.disabled = true;
 
-  try {
-    setStatus(findStat, 'Searching…');
-    findBtn.disabled = true;
+        const res = await fetch(ENDPOINT_FIND, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ first_name: first, last_name: last })
+        });
 
-    const res = await fetch(ENDPOINT_FIND, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ first, last })
-    });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || !json?.ok || !json?.contact) {
+          setStatus(findStat, 'Contact not found', true);
+          fillContact(null);
+          return;
+        }
 
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json?.ok || !json?.contact) {
-      setStatus(findStat, 'Contact not found', true);
-      fillContact(null);
-      return;
+        fillContact(json.contact);
+        setStatus(findStat, 'Loaded.');
+        if (dbgToggle?.checked) showDebug(json);
+      } catch (e) {
+        setStatus(findStat, 'Search error', true);
+        fillContact(null);
+        if (dbgToggle?.checked) showDebug(String(e?.message || e));
+      } finally {
+        findBtn.disabled = false;
+      }
     }
 
-    fillContact(json.contact);
-    setStatus(findStat, 'Loaded.');
-  } catch (e) {
-    setStatus(findStat, `Search error`, true);
-    fillContact(null);
-  } finally {
-    findBtn.disabled = false;
-  }
-}
-
-
     /* =======================
-       SAVE (v1.0 log + upsert only)
+       SAVE (log + upsert only)
+       requires USER in URL
     ======================= */
     async function doSave() {
       if (!USER) {
-        blockUiForMissingUser();
+        setStatus(saveStat, 'Missing ?user= in URL (or ?u=/ ?name=).', true);
         return;
       }
-      try {
-        if (!state.ghl_contact_id) {
-          setStatus(saveStat, 'No contact loaded.', true);
-          return;
-        }
-        const payload = {
-          actor: USER, // URL-derived username
-          ghl_contact_id: state.ghl_contact_id,
-          status: (inpStat.value || '').trim() || null,
-          fields: {
-            first_name: (inpFirst.value || '').trim() || null,
-            last_name: (inpLast.value  || '').trim() || null,
-          },
-          debug: !!(dbgToggle && dbgToggle.checked)
-          // v1.1 can add sync_mode: 'ghl_push'
-        };
+      if (!state.ghl_contact_id) {
+        setStatus(saveStat, 'No contact loaded.', true);
+        return;
+      }
 
+      const payload = {
+        actor: USER,
+        ghl_contact_id: state.ghl_contact_id,
+        status: (inpStat.value || '').trim() || null,
+        fields: {
+          first_name: (inpFirst.value || '').trim() || null,
+          last_name:  (inpLast.value  || '').trim() || null,
+        },
+        debug: !!(dbgToggle && dbgToggle.checked)
+      };
+
+      try {
         setStatus(saveStat, 'Saving…');
         saveBtn.disabled = true;
 
@@ -314,20 +291,22 @@ async function doFind() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        const json = await res.json();
-        showDebug(json);
+
+        const txt = await res.text();
+        let json; try { json = JSON.parse(txt); } catch { json = { raw: txt }; }
 
         if (!res.ok || !json?.ok) {
           setStatus(saveStat, 'Save error', true);
+          if (dbgToggle?.checked) showDebug(json);
           return;
         }
         setStatus(saveStat, 'Saved.');
+        if (dbgToggle?.checked) showDebug(json);
       } catch (e) {
-        console.error(e);
         setStatus(saveStat, 'Save error', true);
-        showDebug(String(e?.message || e));
+        if (dbgToggle?.checked) showDebug(String(e?.message || e));
       } finally {
-        saveBtn.disabled = !state.ghl_contact_id; // enable only if contact remains loaded
+        saveBtn.disabled = !state.ghl_contact_id;
       }
     }
 
@@ -343,4 +322,3 @@ async function doFind() {
   </script>
 </body>
 </html>
-
