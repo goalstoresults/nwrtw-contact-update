@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>NWRTW Contact Portal — Change & Save • v1.0.5 (log-only)</title>
+  <title>NWRTW Contact Portal — Change & Save • v1.0.6 (log-only)</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -213,49 +213,88 @@
     // Expose for existing code (no-op if unused)
     window.nwrtwSetLoadedContact = function(contact) { fillContact(contact); };
 
-    /* =======================
-       FIND CONTACT (original-style)
-       POST body: { first_name, last_name }
-       expects: { ok:true, contact:{...} }
-    ======================= */
-    async function doFind() {
-      const first = (inpSearchFirst.value || '').trim();
-      const last  = (inpSearchLast.value  || '').trim();
+/* =======================
+   FIND CONTACT — compatible with old worker
+   - Sends BOTH {first_name,last_name} and {first,last}
+   - Accepts common response shapes
+   - Shows raw server reply when shape mismatches
+======================= */
+async function doFind() {
+  const first = (inpSearchFirst.value || '').trim();
+  const last  = (inpSearchLast.value  || '').trim();
 
-      if (!first || !last) {
-        setStatus(findStat, 'Enter both First and Last.', true);
-        fillContact(null);
-        return;
-      }
+  if (!first || !last) {
+    setStatus(findStat, 'Enter both First and Last.', true);
+    fillContact(null);
+    return;
+  }
 
-      try {
-        setStatus(findStat, 'Searching…');
-        findBtn.disabled = true;
+  setStatus(findStat, 'Searching…');
+  findBtn.disabled = true;
 
-        const res = await fetch(ENDPOINT_FIND, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ first_name: first, last_name: last })
-        });
+  // helper: safely parse JSON or return raw text
+  const readSafe = async (res) => {
+    const txt = await res.text();
+    try { return { body: JSON.parse(txt), raw: null, status: res.status, ok: res.ok }; }
+    catch { return { body: null, raw: txt, status: res.status, ok: res.ok }; }
+  };
 
-        const json = await res.json().catch(() => ({}));
-        if (!res.ok || !json?.ok || !json?.contact) {
-          setStatus(findStat, 'Contact not found', true);
-          fillContact(null);
-          return;
-        }
+  try {
+    // Send BOTH key styles to satisfy older/newer workers
+    const res = await fetch(ENDPOINT_FIND, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        first_name: first,
+        last_name:  last,
+        first,
+        last
+      })
+    });
 
-        fillContact(json.contact);
-        setStatus(findStat, 'Loaded.');
-        if (dbgToggle?.checked) showDebug(json);
-      } catch (e) {
-        setStatus(findStat, 'Search error', true);
-        fillContact(null);
-        if (dbgToggle?.checked) showDebug(String(e?.message || e));
-      } finally {
-        findBtn.disabled = false;
-      }
+    const out = await readSafe(res);
+    if (dbgToggle?.checked) showDebug(out.body ?? { status: out.status, raw: out.raw });
+
+    // Accept any of these shapes:
+    // { ok:true, contact:{...} }
+    // { contact:{...} }
+    // { data:{ contact:{...} } }
+    // { data:[ {...} ] }
+    // [ {...} ]
+    let contact = null;
+    const b = out.body;
+
+    if (b?.contact) contact = b.contact;
+    else if (b?.data?.contact) contact = b.data.contact;
+    else if (Array.isArray(b?.data) && b.data.length) contact = b.data[0];
+    else if (Array.isArray(b) && b.length) contact = b[0];
+
+    if (!out.ok || !contact) {
+      const msg = (b && (b.error || b.message)) || (out.raw ? `Server: ${out.raw}` : 'Contact not found');
+      setStatus(findStat, msg, true);
+      fillContact(null);
+      return;
     }
+
+    // Normalize expected fields if worker names differ
+    contact = {
+      ghl_contact_id: contact.ghl_contact_id ?? contact.ghlId ?? contact.contact_id ?? contact.id ?? null,
+      first_name:     contact.first_name ?? contact.firstName ?? null,
+      last_name:      contact.last_name  ?? contact.lastName  ?? null,
+      status:         contact.status ?? contact.current_status ?? null,
+      ...contact
+    };
+
+    fillContact(contact);
+    setStatus(findStat, 'Loaded.');
+  } catch (e) {
+    setStatus(findStat, `Search error: ${String(e?.message || e)}`, true);
+    fillContact(null);
+    if (dbgToggle?.checked) showDebug(String(e?.message || e));
+  } finally {
+    findBtn.disabled = false;
+  }
+}
 
     /* =======================
        SAVE (log + upsert only)
