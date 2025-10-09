@@ -47,7 +47,7 @@
   <header>
     <div>
       <div class="brand">NWRTW Contact Portal</div>
-      <div class="meta">Change & Save • v1.0.3 (log-only)</div>
+      <div class="meta">Change & Save • v1.0.4 (log-only)</div>
     </div>
     <div class="meta">
       <span class="pill">User: <strong id="userName">Unknown</strong></span>
@@ -236,51 +236,50 @@
     }
 
     /* =======================
-       FIND CONTACT
-    ======================= */
-    async function doFind() {
-      if (!USER) {
-        blockUiForMissingUser();
-        return;
-      }
-      try {
-        const first = (inpSearchFirst.value || '').trim();
-        const last  = (inpSearchLast.value  || '').trim();
+   FIND CONTACT (matches existing worker)
+======================= */
+async function doFind() {
+  if (!USER) {
+    blockUiForMissingUser();
+    return;
+  }
 
-        if (!first || !last) {
-          setStatus(findStat, 'Enter both First and Last.', true);
-          fillContact(null);
-          return;
-        }
+  const first = (inpSearchFirst.value || '').trim();
+  const last  = (inpSearchLast.value  || '').trim();
 
-        setStatus(findStat, 'Searching…');
-        findBtn.disabled = true;
+  if (!first || !last) {
+    setStatus(findStat, 'Enter both First and Last.', true);
+    fillContact(null);
+    return;
+  }
 
-        const res = await fetch(ENDPOINT_FIND, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ first, last, debug: dbgToggle?.checked })
-        });
-        const json = await res.json();
-        showDebug(json);
+  try {
+    setStatus(findStat, 'Searching…');
+    findBtn.disabled = true;
 
-        if (!res.ok || !json?.ok || !json?.contact) {
-          setStatus(findStat, 'Contact not found', true);
-          fillContact(null);
-          return;
-        }
+    const res = await fetch(ENDPOINT_FIND, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ first, last })
+    });
 
-        fillContact(json.contact);
-        setStatus(findStat, 'Loaded.');
-      } catch (e) {
-        console.error(e);
-        setStatus(findStat, 'Search error', true);
-        fillContact(null);
-        showDebug(String(e?.message || e));
-      } finally {
-        findBtn.disabled = false;
-      }
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok || !json?.ok || !json?.contact) {
+      setStatus(findStat, 'Contact not found', true);
+      fillContact(null);
+      return;
     }
+
+    fillContact(json.contact);
+    setStatus(findStat, 'Loaded.');
+  } catch (e) {
+    setStatus(findStat, `Search error`, true);
+    fillContact(null);
+  } finally {
+    findBtn.disabled = false;
+  }
+}
+
 
     /* =======================
        SAVE (v1.0 log + upsert only)
