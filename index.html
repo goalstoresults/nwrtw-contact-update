@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>NWRTW Contact Change • v1.0.1</title>
+  <title>NWRTW Contact Change • v1.0.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     :root {
@@ -48,7 +48,7 @@
   <header>
     <div>
       <div class="brand">NWRTW Contact Portal</div>
-      <div class="meta">Change & Save • v1.0.1 (log-only)</div>
+      <div class="meta">Change & Save • v1.0.2 (log-only)</div>
     </div>
     <div class="meta">
       <span id="userPill" class="pill">User: <strong id="userName">Unknown</strong></span>
@@ -78,8 +78,8 @@
 
     <div class="grid-gap"></div>
 
-    <!-- DETAILS -->
-    <section class="card" id="detailsCard">
+    <!-- DETAILS (hidden until a contact is loaded) -->
+    <section class="card" id="detailsCard" style="display:none;">
       <h3 class="h">Contact Details</h3>
       <div class="row">
         <div>
@@ -104,7 +104,7 @@
       </div>
       <div class="grid-gap"></div>
       <div class="actions">
-        <button id="saveBtn">Save (log-only)</button>
+        <button id="saveBtn" disabled>Save (log-only)</button>
         <button id="resetBtn" class="secondary">Reset</button>
         <label class="pill" style="cursor:pointer;">
           <input type="checkbox" id="debugToggle" /> Debug
@@ -120,10 +120,8 @@
     /* =======================
        CONFIG
     ======================= */
-    // If your Workers are mounted at different paths/hosts, update these:
-    const ENDPOINT_FIND = '/nwrtw-find-contact';     // GET or POST (we'll use POST here)
-    const ENDPOINT_SAVE = '/nwrtw-contact-change';   // POST (v1.0 log+upsert)
-    // Optionally set this before load from your layout/template:
+    const ENDPOINT_FIND = '/nwrtw-find-contact';     // adjust if mounted elsewhere
+    const ENDPOINT_SAVE = '/nwrtw-contact-change';   // v1.0 log+upsert
     // window.nwrtwUserName = 'Dennis';
 
     /* =======================
@@ -146,6 +144,8 @@
     const dbgToggle = $('#debugToggle');
     const dbgOut    = $('#debugOut');
 
+    const detailsCard = $('#detailsCard');
+
     const inpSearchFirst = $('#search_first');
     const inpSearchLast  = $('#search_last');
 
@@ -161,6 +161,10 @@
     ======================= */
     if (window.nwrtwUserName) userNameEl.textContent = window.nwrtwUserName;
 
+    // Ensure hidden + disabled on load
+    detailsCard.style.display = 'none';
+    saveBtn.disabled = true;
+
     /* =======================
        HELPERS
     ======================= */
@@ -172,7 +176,7 @@
     }
 
     function showDebug(obj) {
-      if (!dbgToggle.checked) {
+      if (!dbgToggle?.checked) {
         dbgOut.style.display = 'none';
         dbgOut.textContent = '';
         return;
@@ -184,6 +188,15 @@
     function fillContact(contact) {
       state.loadedContact = contact || null;
       state.ghl_contact_id = contact?.ghl_contact_id || null;
+
+      if (state.ghl_contact_id) {
+        detailsCard.style.display = 'block';
+        saveBtn.disabled = false;
+      } else {
+        detailsCard.style.display = 'none';
+        saveBtn.disabled = true;
+      }
+
       inpGhlId.value = state.ghl_contact_id || '';
       inpFirst.value = contact?.first_name ?? '';
       inpLast.value  = contact?.last_name ?? '';
@@ -207,17 +220,17 @@
 
         if (!first || !last) {
           setStatus(findStat, 'Enter both First and Last.', true);
+          fillContact(null);
           return;
         }
 
         setStatus(findStat, 'Searching…');
         findBtn.disabled = true;
 
-        // Adjust if your find worker expects GET with query params
         const res = await fetch(ENDPOINT_FIND, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ first, last, debug: dbgToggle.checked })
+          body: JSON.stringify({ first, last, debug: dbgToggle?.checked })
         });
         const json = await res.json();
         showDebug(json);
@@ -233,6 +246,7 @@
       } catch (e) {
         console.error(e);
         setStatus(findStat, 'Search error', true);
+        fillContact(null);
         showDebug(String(e?.message || e));
       } finally {
         findBtn.disabled = false;
@@ -256,8 +270,7 @@
             first_name: (inpFirst.value || '').trim() || null,
             last_name: (inpLast.value  || '').trim() || null,
           },
-          debug: !!dbgToggle.checked
-          // v1.0 ignores sync_mode; v1.1 can accept 'log_only' | 'ghl_push'
+          debug: !!(dbgToggle && dbgToggle.checked)
         };
 
         setStatus(saveStat, 'Saving…');
@@ -281,7 +294,7 @@
         setStatus(saveStat, 'Save error', true);
         showDebug(String(e?.message || e));
       } finally {
-        saveBtn.disabled = false;
+        saveBtn.disabled = !state.ghl_contact_id; // re-enable only if a contact is loaded
       }
     }
 
@@ -291,7 +304,9 @@
     findBtn.addEventListener('click', doFind);
     saveBtn.addEventListener('click', doSave);
     resetBtn.addEventListener('click', resetForm);
-    dbgToggle.addEventListener('change', () => showDebug(state.loadedContact ? { loaded: state.loadedContact } : ''));
+    dbgToggle?.addEventListener('change', () =>
+      showDebug(state.loadedContact ? { loaded: state.loadedContact } : '')
+    );
   </script>
 </body>
 </html>
