@@ -5,6 +5,7 @@
   <title>NWRTW – Contact Update Portal</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
+    /* Prevent width overflow */
     *, *::before, *::after { box-sizing: border-box; }
 
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
@@ -18,8 +19,7 @@
 
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-    .row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
-    @media (max-width: 720px) { .row, .row-3, .row-4 { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) { .row, .row-3 { grid-template-columns: 1fr; } }
 
     label { font-size: 12px; color: #374151; display: block; margin-bottom: 6px; }
 
@@ -60,7 +60,7 @@
       <strong>NWRTW – Contact Update Portal</strong>
       <span class="user-badge" id="userBadge">User: (unknown)</span>
     </div>
-    <span class="ver" id="versionTxt">v0.1.8 • 2025-10-31</span>
+    <span class="ver" id="versionTxt">v0.1.9 • 2025-10-31</span>
   </header>
 
   <main>
@@ -110,23 +110,25 @@
         </div>
       </div>
 
-      <!-- NEW: 4 date fields -->
-      <div class="row-4" style="margin-top:12px;">
+      <!-- NEW: 4 editable date fields -->
+      <div class="row" style="margin-top:12px;">
         <div>
           <label for="authStart">Auth Start</label>
-          <input id="authStart" type="date" />
+          <input type="date" id="authStart" />
         </div>
         <div>
           <label for="authEnd">Auth End</label>
-          <input id="authEnd" type="date" />
+          <input type="date" id="authEnd" />
         </div>
+      </div>
+      <div class="row" style="margin-top:12px;">
         <div>
           <label for="txStart">TX Start</label>
-          <input id="txStart" type="date" />
+          <input type="date" id="txStart" />
         </div>
         <div>
           <label for="txEnd">TX End</label>
-          <input id="txEnd" type="date" />
+          <input type="date" id="txEnd" />
         </div>
       </div>
 
@@ -155,18 +157,19 @@
   </main>
 
   <footer>
-    NWRTW Contact Update • <span id="verFooter">v0.1.8 • 2025-10-31</span>
+    NWRTW Contact Update • <span id="verFooter">v0.1.9 • 2025-10-31</span>
   </footer>
 
   <script>
     // ======== CONFIG ========
-    const VERSION = "v0.1.8 • 2025-10-31";
+    const VERSION = "v0.1.9 • 2025-10-31";
     const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev"; // find & load
     const SAVE_ENDPOINT = "https://nwrtw-contact-change.dennis-e64.workers.dev"; // save
+
     const STATUS_OPTIONS = [
-      "RX Received","On Hold","RX Processed","IE Authorized","IE Scheduled",
-      "IE Completed","On Hold Review","TX Authorized","TX Scheduled",
-      "Active Treatment","Follow Up","Discharged"
+      "RX Received", "On Hold", "RX Processed", "IE Authorized", "IE Scheduled",
+      "IE Completed", "On Hold Review", "TX Authorized", "TX Scheduled",
+      "Active Treatment", "Follow Up", "Discharged"
     ];
 
     document.getElementById("versionTxt").textContent = VERSION;
@@ -184,11 +187,13 @@
       let u = sessionStorage.getItem("nwrtw_user_name");
       if (!u) {
         const qp = getQueryParam("user_name");
-        if (qp) { sessionStorage.setItem("nwrtw_user_name", qp); u = qp; }
+        if (qp) {
+          sessionStorage.setItem("nwrtw_user_name", qp);
+          u = qp;
+        }
       }
       return (u || "").trim();
     }
-
     const userName = getUserNameOrDie();
     document.getElementById("userBadge").textContent = `User: ${userName || "(unknown)"}`;
 
@@ -196,19 +201,7 @@
     const $ = (id) => document.getElementById(id);
     const setStatus = (el, msg, ok=true) => { el.textContent = msg; el.className = "statusbar " + (ok ? "status-ok" : "status-err"); };
 
-    // Normalize incoming values to YYYY-MM-DD for <input type="date">
-    function toYMD(v) {
-      if (!v) return "";
-      // if already yyyy-mm-dd
-      if (/^\d{4}-\d{2}-\d{2}$/.test(String(v))) return String(v);
-      const d = new Date(v);
-      if (isNaN(d)) return "";
-      const yyyy = d.getUTCFullYear();
-      const mm = String(d.getUTCMonth()+1).padStart(2,'0');
-      const dd = String(d.getUTCDate()).padStart(2,'0');
-      return `${yyyy}-${mm}-${dd}`;
-    }
-
+    // Format LA-time strings returned from history (“YYYY-MM-DD HH:mm:ss”) nicely
     function formatDateLocal(isoLike) {
       if (!isoLike) return "";
       try {
@@ -216,6 +209,15 @@
         if (parts.length >= 2) return parts[0] + " " + parts[1].slice(0,8);
         return isoLike;
       } catch { return isoLike; }
+    }
+
+    // Convert DB date string (e.g., "2025-10-31" or "2025-10-31T00:00:00") to <input type="date"> value (YYYY-MM-DD)
+    function toYMD(v) {
+      if (!v) return "";
+      const s = String(v);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;              // already date
+      const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+      return m ? m[1] : "";
     }
 
     function uniqueOptions(select, values, current) {
@@ -234,12 +236,12 @@
 
     // ======== STATE ========
     let currentContact = null;
-    let initialDates = { auth_start:"", auth_end:"", tx_start:"", tx_end:"" };
 
     // ======== FIND ========
     $("findBtn").addEventListener("click", async () => {
       const first_name = $("firstName").value.trim();
       const last_name  = $("lastName").value.trim();
+
       $("results").innerHTML = "";
       setStatus($("findMsg"), "Searching…", true);
 
@@ -247,7 +249,7 @@
         const r = await fetch(`${API_BASE}/find`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ first_name, last_name })
+          body: JSON.stringify({ first_name, last_name }) // worker handles case-insensitive
         });
         const data = await r.json();
         if (!r.ok) throw new Error(data?.error || "Search failed");
@@ -262,8 +264,8 @@
         setStatus($("findMsg"), `Found ${data.count} contact(s).`, true);
 
         if (data.count === 1) {
-          renderContact(data.matches[0]);
-          renderHistory(data.history || []);
+          // IMPORTANT: load via /contact so we also retrieve HISTORY
+          await loadContact(data.matches[0].ghl_contact_id);
         } else {
           const container = $("results");
           data.matches.forEach(item => {
@@ -274,7 +276,9 @@
                 <div><strong>${item.first_name || ""} ${item.last_name || ""}</strong></div>
                 <div class="muted">Program: ${item.program || ""}</div>
               </div>
-              <div><span class="pill">${item.status || "—"}</span></div>
+              <div>
+                <span class="pill">${item.status || "—"}</span>
+              </div>
             `;
             div.addEventListener("click", () => loadContact(item.ghl_contact_id));
             container.appendChild(div);
@@ -306,29 +310,16 @@
       currentContact = contact;
       $("contactCard").style.display = "";
 
-      $("activeYn").value      = contact.active_yn ?? "";
-      $("program").value       = contact.program || "";
-      $("currentStatus").value = contact.status  || "";
+      $("activeYn").value = contact.active_yn ?? "";
+      $("program").value = contact.program || "";
+      $("currentStatus").value = contact.status || "";
       uniqueOptions($("statusSelect"), STATUS_OPTIONS, contact.status || "");
 
-      // NEW: map in the four dates (normalize to yyyy-mm-dd for inputs)
-      const aStart = toYMD(contact.auth_start);
-      const aEnd   = toYMD(contact.auth_end);
-      const tStart = toYMD(contact.tx_start);
-      const tEnd   = toYMD(contact.tx_end);
-
-      $("authStart").value = aStart;
-      $("authEnd").value   = aEnd;
-      $("txStart").value   = tStart;
-      $("txEnd").value     = tEnd;
-
-      // Track initial values to avoid accidental overwrites on Save
-      initialDates = {
-        auth_start: aStart,
-        auth_end:   aEnd,
-        tx_start:   tStart,
-        tx_end:     tEnd
-      };
+      // Populate 4 date fields without forcing today's date
+      $("authStart").value = toYMD(contact.auth_start) || "";
+      $("authEnd").value   = toYMD(contact.auth_end)   || "";
+      $("txStart").value   = toYMD(contact.tx_start)   || "";
+      $("txEnd").value     = toYMD(contact.tx_end)     || "";
 
       $("saveMsg").textContent = "";
       $("historyCard").style.display = "none";
@@ -350,7 +341,7 @@
       });
     }
 
-    // ======== SAVE ========
+    // ======== SAVE (body + header + query) ========
     $("saveBtn").addEventListener("click", async () => {
       if (!currentContact) return;
 
@@ -360,26 +351,21 @@
         return;
       }
 
-      // Build payload: include date keys ONLY if changed vs initial
-      const next = {
-        auth_start: $("authStart").value || "",
-        auth_end:   $("authEnd").value   || "",
-        tx_start:   $("txStart").value   || "",
-        tx_end:     $("txEnd").value     || ""
+      // Only send values if provided (empty string means clear -> null)
+      const norm = (v) => {
+        const s = (v ?? "").trim();
+        return s === "" ? null : s;
       };
 
       const payload = {
         ghl_contact_id: currentContact.ghl_contact_id,
         status: $("statusSelect").value,
-        user_name: actingUser
+        user_name: actingUser,
+        auth_start: norm($("authStart").value),
+        auth_end:   norm($("authEnd").value),
+        tx_start:   norm($("txStart").value),
+        tx_end:     norm($("txEnd").value),
       };
-
-      // Include each date field only if changed (prevents Safari “today” quirks from clearing data)
-      for (const key of ["auth_start","auth_end","tx_start","tx_end"]) {
-        if (next[key] !== (initialDates[key] || "")) {
-          payload[key] = next[key]; // if "", worker will NULL it; otherwise 'YYYY-MM-DD'
-        }
-      }
 
       const saveUrl = `${SAVE_ENDPOINT}?user_name=${encodeURIComponent(actingUser)}`;
 
@@ -389,7 +375,10 @@
       try {
         const r = await fetch(saveUrl, {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-acting-user": actingUser },
+          headers: {
+            "Content-Type": "application/json",
+            "x-acting-user": actingUser
+          },
           body: JSON.stringify(payload)
         });
 
@@ -402,7 +391,6 @@
           return;
         }
 
-        // Reload to pick up normalized DB values and refresh initialDates
         await loadContact(currentContact.ghl_contact_id);
         setStatus($("saveMsg"), "Saved ✓", true);
       } catch (e) {
@@ -414,7 +402,6 @@
 
     $("clearBtn").addEventListener("click", () => {
       currentContact = null;
-      initialDates = { auth_start:"", auth_end:"", tx_start:"", tx_end:"" };
       $("firstName").value = "";
       $("lastName").value = "";
       $("results").innerHTML = "";
@@ -424,7 +411,7 @@
       $("saveMsg").textContent = "";
     });
 
-    // Optional: auto-load if contact id in URL
+    // Optional: auto-load if a contactId is passed in the URL
     const qpId = getQueryParam("ghl_contact_id");
     if (qpId) loadContact(qpId);
   </script>
