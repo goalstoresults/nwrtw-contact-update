@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <style>
     *, *::before, *::after { box-sizing: border-box; }
+
     :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; }
     body { margin: 0; background: #f7f7f8; color: #111827; }
     header { padding: 16px 20px; background: #111827; color: #fff; display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
@@ -17,19 +18,29 @@
 
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-    @media (max-width: 720px) { .row, .row-3 { grid-template-columns: 1fr; } }
+    .row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
+    @media (max-width: 720px) { .row, .row-3, .row-4 { grid-template-columns: 1fr; } }
 
     label { font-size: 12px; color: #374151; display: block; margin-bottom: 6px; }
+
     input, select, button {
-      display: block; width: 100%; padding: 10px 12px; border-radius: 10px;
-      border: 1px solid #d1d5db; background: #fff; font-size: 14px;
+      display: block;
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 10px;
+      border: 1px solid #d1d5db;
+      background: #fff;
+      font-size: 14px;
     }
     input[readonly] { background: #f3f4f6; color: #6b7280; }
-    button { background: #111827; color: #fff; border: none; cursor: pointer; width:auto; }
+
+    button { background: #111827; color: #fff; border: none; cursor: pointer; }
     button.secondary { background: #e5e7eb; color: #111827; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
 
     .toolbar { display:flex; gap: 8px; align-items:center; flex-wrap: wrap; }
+    .toolbar button { width: auto; }
+
     .statusbar { margin-top: 8px; font-size: 13px; }
     .status-ok { color: #065f46; }
     .status-err { color: #991b1b; }
@@ -49,7 +60,7 @@
       <strong>NWRTW – Contact Update Portal</strong>
       <span class="user-badge" id="userBadge">User: (unknown)</span>
     </div>
-    <span class="ver" id="versionTxt">v0.1.91 • 2025-10-31</span>
+    <span class="ver" id="versionTxt">v0.1.8 • 2025-10-31</span>
   </header>
 
   <main>
@@ -76,6 +87,7 @@
     <!-- CONTACT DETAILS -->
     <section class="card" id="contactCard" style="display:none;">
       <h3>Contact</h3>
+
       <div class="row">
         <div>
           <label>Active</label>
@@ -98,25 +110,23 @@
         </div>
       </div>
 
-      <!-- NEW: date fields -->
-      <div class="row" style="margin-top:12px;">
+      <!-- NEW: 4 date fields -->
+      <div class="row-4" style="margin-top:12px;">
         <div>
           <label for="authStart">Auth Start</label>
-          <input id="authStart" type="date" autocomplete="off" placeholder="YYYY-MM-DD" value="">
+          <input id="authStart" type="date" />
         </div>
         <div>
           <label for="authEnd">Auth End</label>
-          <input id="authEnd" type="date" autocomplete="off" placeholder="YYYY-MM-DD" value="">
+          <input id="authEnd" type="date" />
         </div>
-      </div>
-      <div class="row" style="margin-top:12px;">
         <div>
           <label for="txStart">TX Start</label>
-          <input id="txStart" type="date" autocomplete="off" placeholder="YYYY-MM-DD" value="">
+          <input id="txStart" type="date" />
         </div>
         <div>
           <label for="txEnd">TX End</label>
-          <input id="txEnd" type="date" autocomplete="off" placeholder="YYYY-MM-DD" value="">
+          <input id="txEnd" type="date" />
         </div>
       </div>
 
@@ -145,18 +155,18 @@
   </main>
 
   <footer>
-    NWRTW Contact Update • <span id="verFooter">v0.1.91 • 2025-10-31</span>
+    NWRTW Contact Update • <span id="verFooter">v0.1.8 • 2025-10-31</span>
   </footer>
 
   <script>
     // ======== CONFIG ========
-    const VERSION = "v0.1.91 • 2025-10-31";
-    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev";          // find & load
-    const SAVE_ENDPOINT = "https://nwrtw-contact-change.dennis-e64.workers.dev";    // save
+    const VERSION = "v0.1.8 • 2025-10-31";
+    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev"; // find & load
+    const SAVE_ENDPOINT = "https://nwrtw-contact-change.dennis-e64.workers.dev"; // save
     const STATUS_OPTIONS = [
-      "RX Received", "On Hold", "RX Processed", "IE Authorized", "IE Scheduled",
-      "IE Completed", "On Hold Review", "TX Authorized", "TX Scheduled",
-      "Active Treatment", "Follow Up", "Discharged"
+      "RX Received","On Hold","RX Processed","IE Authorized","IE Scheduled",
+      "IE Completed","On Hold Review","TX Authorized","TX Scheduled",
+      "Active Treatment","Follow Up","Discharged"
     ];
 
     document.getElementById("versionTxt").textContent = VERSION;
@@ -169,6 +179,7 @@
     }
     const qpUser = getQueryParam("user_name");
     if (qpUser) sessionStorage.setItem("nwrtw_user_name", qpUser);
+
     function getUserNameOrDie() {
       let u = sessionStorage.getItem("nwrtw_user_name");
       if (!u) {
@@ -177,12 +188,26 @@
       }
       return (u || "").trim();
     }
+
     const userName = getUserNameOrDie();
     document.getElementById("userBadge").textContent = `User: ${userName || "(unknown)"}`;
 
     // ======== UTIL ========
     const $ = (id) => document.getElementById(id);
     const setStatus = (el, msg, ok=true) => { el.textContent = msg; el.className = "statusbar " + (ok ? "status-ok" : "status-err"); };
+
+    // Normalize incoming values to YYYY-MM-DD for <input type="date">
+    function toYMD(v) {
+      if (!v) return "";
+      // if already yyyy-mm-dd
+      if (/^\d{4}-\d{2}-\d{2}$/.test(String(v))) return String(v);
+      const d = new Date(v);
+      if (isNaN(d)) return "";
+      const yyyy = d.getUTCFullYear();
+      const mm = String(d.getUTCMonth()+1).padStart(2,'0');
+      const dd = String(d.getUTCDate()).padStart(2,'0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
 
     function formatDateLocal(isoLike) {
       if (!isoLike) return "";
@@ -200,52 +225,16 @@
       select.innerHTML = "";
       for (const v of arr) {
         const opt = document.createElement("option");
-        opt.value = v; opt.textContent = v;
+        opt.value = v;
+        opt.textContent = v;
         select.appendChild(opt);
       }
       if (current) select.value = current;
     }
 
-    // --- Date input hard-blanking to defeat Safari defaults/autofill ---
-    function forceBlankDate(id) {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.value = '';
-      el.defaultValue = '';
-      el.setAttribute('value', '');
-    }
-    function antiAutofillDates() {
-      ['authStart','authEnd','txStart','txEnd'].forEach(id => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.autocomplete = 'new-password';
-        el.name = id + '_' + Math.random().toString(36).slice(2);
-        el.inputmode = 'numeric';
-        el.spellcheck = false;
-        el.autocapitalize = 'off';
-      });
-    }
-    function setDateInput(id, val){
-      forceBlankDate(id);
-      if (!val) return;
-      const el = document.getElementById(id);
-      const s = String(val);
-      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { el.value = s; return; }
-      const d = new Date(s);
-      if (!isNaN(d)) {
-        const yyyy = d.getUTCFullYear();
-        const mm = String(d.getUTCMonth()+1).padStart(2,'0');
-        const dd = String(d.getUTCDate()).padStart(2,'0');
-        el.value = `${yyyy}-${mm}-${dd}`;
-      }
-    }
-    function getDateOrNull(id){
-      const v = ($(id).value || '').trim();
-      return v ? v : null; // already yyyy-mm-dd from <input type="date">
-    }
-
     // ======== STATE ========
     let currentContact = null;
+    let initialDates = { auth_start:"", auth_end:"", tx_start:"", tx_end:"" };
 
     // ======== FIND ========
     $("findBtn").addEventListener("click", async () => {
@@ -316,19 +305,33 @@
     function renderContact(contact) {
       currentContact = contact;
       $("contactCard").style.display = "";
-      $("activeYn").value = contact.active_yn ?? "";
-      $("program").value = contact.program || "";
-      $("currentStatus").value = contact.status || "";
+
+      $("activeYn").value      = contact.active_yn ?? "";
+      $("program").value       = contact.program || "";
+      $("currentStatus").value = contact.status  || "";
       uniqueOptions($("statusSelect"), STATUS_OPTIONS, contact.status || "");
+
+      // NEW: map in the four dates (normalize to yyyy-mm-dd for inputs)
+      const aStart = toYMD(contact.auth_start);
+      const aEnd   = toYMD(contact.auth_end);
+      const tStart = toYMD(contact.tx_start);
+      const tEnd   = toYMD(contact.tx_end);
+
+      $("authStart").value = aStart;
+      $("authEnd").value   = aEnd;
+      $("txStart").value   = tStart;
+      $("txEnd").value     = tEnd;
+
+      // Track initial values to avoid accidental overwrites on Save
+      initialDates = {
+        auth_start: aStart,
+        auth_end:   aEnd,
+        tx_start:   tStart,
+        tx_end:     tEnd
+      };
+
       $("saveMsg").textContent = "";
       $("historyCard").style.display = "none";
-
-      // Blank first, then set from DB values
-      ['authStart','authEnd','txStart','txEnd'].forEach(forceBlankDate);
-      setDateInput('authStart', contact.auth_start || null);
-      setDateInput('authEnd',   contact.auth_end   || null);
-      setDateInput('txStart',   contact.tx_start   || null);
-      setDateInput('txEnd',     contact.tx_end     || null);
     }
 
     function renderHistory(list) {
@@ -357,16 +360,26 @@
         return;
       }
 
+      // Build payload: include date keys ONLY if changed vs initial
+      const next = {
+        auth_start: $("authStart").value || "",
+        auth_end:   $("authEnd").value   || "",
+        tx_start:   $("txStart").value   || "",
+        tx_end:     $("txEnd").value     || ""
+      };
+
       const payload = {
         ghl_contact_id: currentContact.ghl_contact_id,
         status: $("statusSelect").value,
-        user_name: actingUser,
-        // NEW date fields (null if blank)
-        auth_start: getDateOrNull('authStart'),
-        auth_end:   getDateOrNull('authEnd'),
-        tx_start:   getDateOrNull('txStart'),
-        tx_end:     getDateOrNull('txEnd')
+        user_name: actingUser
       };
+
+      // Include each date field only if changed (prevents Safari “today” quirks from clearing data)
+      for (const key of ["auth_start","auth_end","tx_start","tx_end"]) {
+        if (next[key] !== (initialDates[key] || "")) {
+          payload[key] = next[key]; // if "", worker will NULL it; otherwise 'YYYY-MM-DD'
+        }
+      }
 
       const saveUrl = `${SAVE_ENDPOINT}?user_name=${encodeURIComponent(actingUser)}`;
 
@@ -376,10 +389,7 @@
       try {
         const r = await fetch(saveUrl, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-acting-user": actingUser
-          },
+          headers: { "Content-Type": "application/json", "x-acting-user": actingUser },
           body: JSON.stringify(payload)
         });
 
@@ -392,6 +402,7 @@
           return;
         }
 
+        // Reload to pick up normalized DB values and refresh initialDates
         await loadContact(currentContact.ghl_contact_id);
         setStatus($("saveMsg"), "Saved ✓", true);
       } catch (e) {
@@ -403,6 +414,7 @@
 
     $("clearBtn").addEventListener("click", () => {
       currentContact = null;
+      initialDates = { auth_start:"", auth_end:"", tx_start:"", tx_end:"" };
       $("firstName").value = "";
       $("lastName").value = "";
       $("results").innerHTML = "";
@@ -410,22 +422,12 @@
       $("historyCard").style.display = "none";
       $("findMsg").textContent = "";
       $("saveMsg").textContent = "";
-      ['authStart','authEnd','txStart','txEnd'].forEach(forceBlankDate);
     });
 
-    // Initial load tweaks
-    document.addEventListener('DOMContentLoaded', () => {
-      antiAutofillDates();
-      ['authStart','authEnd','txStart','txEnd'].forEach(forceBlankDate);
-    });
-    // Handle Safari BFCache restoration
-    window.addEventListener('pageshow', (e) => {
-      if (e.persisted) ['authStart','authEnd','txStart','txEnd'].forEach(forceBlankDate);
-    });
-
-    // Optional: auto-load if a contactId is passed in the URL
+    // Optional: auto-load if contact id in URL
     const qpId = getQueryParam("ghl_contact_id");
     if (qpId) loadContact(qpId);
   </script>
 </body>
 </html>
+
