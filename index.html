@@ -18,22 +18,14 @@
 
     .row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
-    .row-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 16px; }
-
-    @media (max-width: 720px) { .row, .row-3, .row-4 { grid-template-columns: 1fr; } }
+    @media (max-width: 720px) { .row, .row-3 { grid-template-columns: 1fr; } }
 
     label { font-size: 12px; color: #374151; display: block; margin-bottom: 6px; }
     input, select, button {
-      display: block;
-      width: 100%;
-      padding: 10px 12px;
-      border-radius: 10px;
-      border: 1px solid #d1d5db;
-      background: #fff;
-      font-size: 14px;
+      display: block; width: 100%; padding: 10px 12px;
+      border-radius: 10px; border: 1px solid #d1d5db; background: #fff; font-size: 14px;
     }
     input[readonly] { background: #f3f4f6; color: #6b7280; }
-
     button { background: #111827; color: #fff; border: none; cursor: pointer; }
     button.secondary { background: #e5e7eb; color: #111827; }
     button:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -60,7 +52,7 @@
       <strong>NWRTW – Contact Update Portal</strong>
       <span class="user-badge" id="userBadge">User: (unknown)</span>
     </div>
-    <span class="ver" id="versionTxt">v0.1.8 • 2025-10-30</span>
+    <span class="ver" id="versionTxt">v0.1.9 • 2025-10-31</span>
   </header>
 
   <main>
@@ -70,11 +62,11 @@
       <div class="row">
         <div>
           <label for="firstName">First Name</label>
-          <input id="firstName" placeholder="e.g., 00004321"/>
+          <input id="firstName" placeholder="e.g., 00004321" autocomplete="off"/>
         </div>
         <div>
           <label for="lastName">Last Name</label>
-          <input id="lastName" placeholder="e.g., PT001"/>
+          <input id="lastName" placeholder="e.g., PT001" autocomplete="off"/>
         </div>
       </div>
       <div class="toolbar" style="margin-top:12px;">
@@ -109,23 +101,25 @@
         </div>
       </div>
 
-      <!-- NEW: Authorization / Treatment Dates -->
-      <div class="row-4" style="margin-top:12px;">
+      <!-- NEW date fields (start blank) -->
+      <div class="row" style="margin-top:12px;">
         <div>
           <label for="authStart">Auth Start</label>
-          <input id="authStart" type="date" />
+          <input id="authStart" type="date" autocomplete="off" />
         </div>
         <div>
           <label for="authEnd">Auth End</label>
-          <input id="authEnd" type="date" />
+          <input id="authEnd" type="date" autocomplete="off" />
         </div>
+      </div>
+      <div class="row" style="margin-top:12px;">
         <div>
           <label for="txStart">TX Start</label>
-          <input id="txStart" type="date" />
+          <input id="txStart" type="date" autocomplete="off" />
         </div>
         <div>
           <label for="txEnd">TX End</label>
-          <input id="txEnd" type="date" />
+          <input id="txEnd" type="date" autocomplete="off" />
         </div>
       </div>
 
@@ -154,14 +148,14 @@
   </main>
 
   <footer>
-    NWRTW Contact Update • <span id="verFooter">v0.1.8 • 2025-10-30</span>
+    NWRTW Contact Update • <span id="verFooter">v0.1.8 • 2025-10-31</span>
   </footer>
 
   <script>
     // ======== CONFIG ========
-    const VERSION = "v0.1.8 • 2025-10-30";
-    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev"; // find & load
-    const SAVE_ENDPOINT = "https://nwrtw-contact-change.dennis-e64.workers.dev"; // save worker
+    const VERSION = "v0.1.8 • 2025-10-31";
+    const API_BASE = "https://nwrtw-find-contact.dennis-e64.workers.dev";        // find & load
+    const SAVE_ENDPOINT = "https://nwrtw-contact-change.dennis-e64.workers.dev";  // save
     const STATUS_OPTIONS = [
       "RX Received","On Hold","RX Processed","IE Authorized","IE Scheduled",
       "IE Completed","On Hold Review","TX Authorized","TX Scheduled",
@@ -172,19 +166,12 @@
     document.getElementById("verFooter").textContent = VERSION;
 
     // ======== USER NAME HANDOFF ========
-    function getQueryParam(name) {
-      const u = new URL(window.location.href);
-      return u.searchParams.get(name);
-    }
+    function getQueryParam(name){ const u=new URL(window.location.href); return u.searchParams.get(name); }
     const qpUser = getQueryParam("user_name");
     if (qpUser) sessionStorage.setItem("nwrtw_user_name", qpUser);
-
-    function getUserNameOrDie() {
+    function getUserNameOrDie(){
       let u = sessionStorage.getItem("nwrtw_user_name");
-      if (!u) {
-        const qp = getQueryParam("user_name");
-        if (qp) { sessionStorage.setItem("nwrtw_user_name", qp); u = qp; }
-      }
+      if (!u) { const qp = getQueryParam("user_name"); if (qp) { sessionStorage.setItem("nwrtw_user_name", qp); u = qp; } }
       return (u || "").trim();
     }
     const userName = getUserNameOrDie();
@@ -193,7 +180,7 @@
     // ======== UTIL ========
     const $ = (id) => document.getElementById(id);
     const setStatus = (el, msg, ok=true) => { el.textContent = msg; el.className = "statusbar " + (ok ? "status-ok" : "status-err"); };
-    function formatDateLocal(isoLike) {
+    function formatDateLocal(isoLike){
       if (!isoLike) return "";
       try {
         const parts = isoLike.split(/[T ]/);
@@ -201,19 +188,34 @@
         return isoLike;
       } catch { return isoLike; }
     }
-    function uniqueOptions(select, values, current) {
-      const set = new Set(values);
-      if (current && !set.has(current)) set.add(current);
-      const arr = Array.from(set);
-      select.innerHTML = "";
-      for (const v of arr) {
-        const opt = document.createElement("option");
-        opt.value = v;
-        opt.textContent = v;
-        select.appendChild(opt);
-      }
-      if (current) select.value = current;
+    function uniqueOptions(select, values, current){
+      const set=new Set(values); if (current && !set.has(current)) set.add(current);
+      const arr=[...set]; select.innerHTML="";
+      for (const v of arr){ const opt=document.createElement("option"); opt.value=v; opt.textContent=v; select.appendChild(opt); }
+      if (current) select.value=current;
     }
+
+    // Always start blank, then set if a valid value exists
+    function setDateInput(id, val){
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.value = '';                         // force blank default (prevents autofill)
+      if (!val) return;
+
+      const s = String(val);
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {   // already date-only
+        el.value = s;
+        return;
+      }
+      const d = new Date(s);
+      if (!isNaN(d)){
+        const yyyy = d.getUTCFullYear();
+        const mm = String(d.getUTCMonth()+1).padStart(2,'0');
+        const dd = String(d.getUTCDate()).padStart(2,'0');
+        el.value = `${yyyy}-${mm}-${dd}`;
+      }
+    }
+    const getDateOrNull = (id) => { const v = (document.getElementById(id)?.value || '').trim(); return v ? v : null; };
 
     // ======== STATE ========
     let currentContact = null;
@@ -266,7 +268,7 @@
       }
     });
 
-    async function loadContact(ghl_contact_id) {
+    async function loadContact(ghl_contact_id){
       $("results").innerHTML = "";
       $("contactCard").style.display = "none";
       $("historyCard").style.display = "none";
@@ -283,33 +285,29 @@
       }
     }
 
-    function setDateInput(id, val) {
-      // Expecting "YYYY-MM-DD" from the DB for date columns
-      $(id).value = (val || "").slice(0, 10);
-    }
-
-    function renderContact(contact) {
+    function renderContact(contact){
       currentContact = contact;
       $("contactCard").style.display = "";
       $("activeYn").value = contact.active_yn ?? "";
       $("program").value = contact.program || "";
       $("currentStatus").value = contact.status || "";
+
       uniqueOptions($("statusSelect"), STATUS_OPTIONS, contact.status || "");
 
-      // NEW: populate date inputs
-      setDateInput("authStart", contact.auth_start);
-      setDateInput("authEnd",   contact.auth_end);
-      setDateInput("txStart",   contact.tx_start);
-      setDateInput("txEnd",     contact.tx_end);
+      // Clear then set date inputs from response (keeps blank default when null)
+      ["authStart","authEnd","txStart","txEnd"].forEach(id => { const el=$(id); if (el) el.value=''; });
+      setDateInput("authStart", contact.auth_start || null);
+      setDateInput("authEnd",   contact.auth_end   || null);
+      setDateInput("txStart",   contact.tx_start   || null);
+      setDateInput("txEnd",     contact.tx_end     || null);
 
       $("saveMsg").textContent = "";
       $("historyCard").style.display = "none";
     }
 
-    function renderHistory(list) {
+    function renderHistory(list){
       $("historyCard").style.display = "";
-      const tbody = $("historyBody");
-      tbody.innerHTML = "";
+      const tbody = $("historyBody"); tbody.innerHTML = "";
       list.forEach(row => {
         const tr = document.createElement("tr");
         tr.innerHTML = `
@@ -321,7 +319,7 @@
       });
     }
 
-    // ======== SAVE (send dates too) ========
+    // ======== SAVE ========
     $("saveBtn").addEventListener("click", async () => {
       if (!currentContact) return;
 
@@ -335,12 +333,11 @@
         ghl_contact_id: currentContact.ghl_contact_id,
         status: $("statusSelect").value,
         user_name: actingUser,
-
-        // NEW: four date fields
-        auth_start: $("authStart").value || null,
-        auth_end:   $("authEnd").value   || null,
-        tx_start:   $("txStart").value   || null,
-        tx_end:     $("txEnd").value     || null
+        // NEW date fields (send null if blank)
+        auth_start: getDateOrNull("authStart"),
+        auth_end:   getDateOrNull("authEnd"),
+        tx_start:   getDateOrNull("txStart"),
+        tx_end:     getDateOrNull("txEnd"),
       };
 
       const saveUrl = `${SAVE_ENDPOINT}?user_name=${encodeURIComponent(actingUser)}`;
@@ -357,7 +354,6 @@
           },
           body: JSON.stringify(payload)
         });
-
         const txt = await r.text();
         let data; try { data = JSON.parse(txt); } catch { data = { raw: txt }; }
 
@@ -378,15 +374,16 @@
 
     $("clearBtn").addEventListener("click", () => {
       currentContact = null;
-      $("firstName").value = "";
-      $("lastName").value = "";
+      ["firstName","lastName"].forEach(id => $(id).value = "");
       $("results").innerHTML = "";
       $("contactCard").style.display = "none";
       $("historyCard").style.display = "none";
       $("findMsg").textContent = "";
       $("saveMsg").textContent = "";
+      ["authStart","authEnd","txStart","txEnd"].forEach(id => { const el=$(id); if (el) el.value=''; });
     });
 
+    // Optional: auto-load if a contactId is passed in the URL
     const qpId = getQueryParam("ghl_contact_id");
     if (qpId) loadContact(qpId);
   </script>
